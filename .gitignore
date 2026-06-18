@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.DS_Store
+.claude/
+
+# Valhalla data (gitignored at valhalla/.gitignore — root-level safety net)
+valhalla/custom_files/*.pbf
+valhalla/custom_files/tiles/

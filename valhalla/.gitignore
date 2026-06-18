@@ -1,0 +1,12 @@
+# OSM data files — large binary, do not commit
+custom_files/*.pbf
+custom_files/*-new.osm.pbf
+
+# Built tile tree — gigabytes of binary data, do not commit
+custom_files/tiles/
+custom_files/tiles-new/
+custom_files/tiles-old/
+
+# Keep the directory and config in version control
+!custom_files/.gitkeep
+!custom_files/valhalla.json

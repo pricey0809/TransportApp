@@ -1,0 +1,154 @@
+:root {
+  --approved-color: #198754;
+  --conditional-color: #fd7e14;
+  --restricted-color: #dc3545;
+}
+
+body {
+  background-color: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Larger tap targets on mobile */
+.form-control-lg,
+.form-select-lg,
+.btn-lg {
+  min-height: 52px;
+}
+
+/* Status banner colours */
+.status-approved {
+  background-color: #d1e7dd;
+  border-color: #a3cfbb;
+  color: #0a3622;
+}
+
+.status-conditional {
+  background-color: #ffe5d0;
+  border-color: #fecba1;
+  color: #6a2d00;
+}
+
+.status-restricted {
+  background-color: #f8d7da;
+  border-color: #f1aeb5;
+  color: #58151c;
+}
+
+.status-unknown {
+  background-color: #e2e3e5;
+  border-color: #c4c8cb;
+  color: #2b2d2f;
+}
+
+/* Oversize dimension panel */
+#oversizeFields {
+  border-color: #0d6efd !important;
+  background-color: #f0f4ff !important;
+}
+
+/* Permit class banners */
+.permit-none {
+  background-color: #d1e7dd;
+  border-color: #a3cfbb;
+  color: #0a3622;
+}
+
+.permit-class1 {
+  background-color: #ffe5d0;
+  border-color: #fecba1;
+  color: #6a2d00;
+}
+
+.permit-special {
+  background-color: #f8d7da;
+  border-color: #f1aeb5;
+  color: #58151c;
+}
+
+/* State accordion compact */
+#stateAccordion .accordion-button {
+  font-size: 0.9rem;
+}
+
+#stateAccordion .accordion-button:not(.collapsed) {
+  background-color: #f0f4ff;
+  color: #0d47a1;
+}
+
+/* Google Maps button */
+.btn-success {
+  background-color: #1a73e8;
+  border-color: #1a73e8;
+}
+.btn-success:hover {
+  background-color: #1558b0;
+  border-color: #1558b0;
+}
+
+/* Card subtle hover */
+.card {
+  border: 1px solid #dee2e6;
+}
+
+/* Prevent layout shift on spinner toggle */
+#btnSearch {
+  transition: none;
+}
+
+/* DG section panel */
+#dgFields {
+  border-color: #dc3545 !important;
+  background-color: #fff5f5 !important;
+}
+
+/* DG placard banners */
+.dg-placard {
+  background-color: #f8d7da;
+  border-color: #f1aeb5;
+  color: #58151c;
+}
+
+.dg-no-placard {
+  background-color: #d1e7dd;
+  border-color: #a3cfbb;
+  color: #0a3622;
+}
+
+.dg-indeterminate {
+  background-color: #fff3cd;
+  border-color: #ffda6a;
+  color: #664d03;
+}
+
+/* Raw data pre */
+#rawDataContent {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 576px) {
+  .navbar-brand {
+    font-size: 1rem;
+  }
+}
+
+/* ── Navigation engine ────────────────────────────────────────────────────── */
+
+/* Nav instruction bar */
+#navBar {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Turn-by-turn step list */
+.nav-step-item {
+  border-left: 3px solid transparent;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.nav-step-active {
+  background-color: #e8f0fe !important;
+  border-left-color: #0d6efd !important;
+}

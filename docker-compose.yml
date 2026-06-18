@@ -1,0 +1,60 @@
+services:
+
+  # ── Valhalla routing engine (serves on :8002 after tiles are built) ──────────
+  #
+  # FIRST-TIME SETUP: run ./valhalla/setup.sh before starting this service.
+  # That script downloads the Australia OSM PBF (~780 MB) and builds the tiles
+  # (~30–60 min). Subsequent `docker compose up` starts instantly from disk.
+  #
+  # MONTHLY DATA REFRESH: run ./valhalla/rebuild_tiles.sh to pull the latest
+  # OSM data from Geofabrik and rebuild tiles.
+
+  valhalla:
+    image: ghcr.io/valhalla/valhalla:latest
+    container_name: transportapp_valhalla
+    # Override entrypoint so we serve directly from pre-built tiles.
+    # valhalla_service <config> <worker_threads>
+    entrypoint: ["valhalla_service", "/custom_files/valhalla.json", "4"]
+    ports:
+      - "8002:8002"
+    volumes:
+      # custom_files/ holds valhalla.json, the built tile tree, and admins.sqlite.
+      # The PBF is downloaded here during setup but is gitignored (780 MB).
+      - ./valhalla/custom_files:/custom_files
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8002/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # ── One-shot tile builder (only runs when explicitly invoked) ─────────────────
+  # Usage: docker compose --profile build run --rm valhalla-build
+  # Or just run ./valhalla/setup.sh which calls this automatically.
+
+  valhalla-build:
+    image: ghcr.io/valhalla/valhalla:latest
+    container_name: transportapp_valhalla_build
+    profiles:
+      - build
+    volumes:
+      - ./valhalla/custom_files:/custom_files
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo "==> Building Valhalla tiles from /custom_files/australia-latest.osm.pbf"
+        echo "    This will take 30–60 minutes on a modern laptop."
+        echo ""
+
+        echo "[1/3] Building routing tiles..."
+        valhalla_build_tiles -c /custom_files/valhalla.json \
+          /custom_files/australia-latest.osm.pbf
+
+        echo "[2/3] Building admin regions database..."
+        valhalla_build_admins -c /custom_files/valhalla.json \
+          /custom_files/australia-latest.osm.pbf
+
+        echo "[3/3] Done. Tile directory: /custom_files/tiles"
+        echo "      Start Valhalla with: docker compose up -d valhalla"
