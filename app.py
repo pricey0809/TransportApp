@@ -88,6 +88,11 @@ def _build_route_maps_url(
 
 # ── Views ─────────────────────────────────────────────────────────────────────
 
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.route("/")
 def index():
     return render_template(
