@@ -234,7 +234,7 @@
             <div class="row g-3">
               <div class="col-12">
                 <label for="dgClass" class="form-label">DG Class / Division</label>
-                <select class="form-select" id="dgClass" required>
+                <select class="form-select" id="dgClass">
                   <option value="" disabled selected>Select DG class…</option>
                   {% for dg in dg_classes %}
                   <option value="{{ dg.code }}">Class {{ dg.label }}</option>
@@ -268,7 +268,6 @@
                   step="0.1"
                   min="0.1"
                   placeholder="e.g. 500"
-                  required
                 />
                 <div class="invalid-feedback">Enter a quantity greater than zero.</div>
               </div>
