@@ -328,8 +328,11 @@ async function handleRouteGeometry(origin, destination, combo) {
       document.getElementById('heightRestrictedAlert').classList.remove('d-none');
       return;
     }
-    // Non-fatal — NHVR result is still shown, just no map
+    // Non-fatal — NHVR result is still shown, but surface the error so it's visible
     console.warn('Route geometry error:', data.error);
+    document.getElementById('valhallaOfflineNote').classList.remove('d-none');
+    document.getElementById('valhallaOfflineNoteText').textContent =
+      data.error || 'Route map unavailable.';
     return;
   }
 

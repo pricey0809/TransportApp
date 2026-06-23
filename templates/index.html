@@ -601,11 +601,10 @@
         Check posted bridge and tunnel clearance signs and consider an alternative start or end point.
       </div>
 
-      <!-- Valhalla offline notice (shown when engine is down) -->
+      <!-- Valhalla offline / geometry error notice -->
       <div id="valhallaOfflineNote" class="alert alert-secondary small d-none py-2" role="alert">
-        <i class="bi bi-wifi-off me-1"></i>
-        Route map not available — routing engine offline.
-        Start with: <code>docker compose up -d valhalla</code>
+        <i class="bi bi-map me-1"></i>
+        <span id="valhallaOfflineNoteText">Route map unavailable — routing engine not responding.</span>
       </div>
 
       <!-- Action buttons -->
