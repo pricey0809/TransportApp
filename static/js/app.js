@@ -384,7 +384,8 @@ async function handleRouteGeometry(origin, destination, combo) {
   // ── Step 2: Browser calls Valhalla directly ────────────────────────────────
   let vr;
   try {
-    const vResp = await fetch(`${paramsData.valhalla_url}/route`, {
+    // Route through Flask proxy — avoids CORS and server-side User-Agent blocks
+    const vResp = await fetch('/api/proxy/valhalla', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(paramsData.valhalla_request),

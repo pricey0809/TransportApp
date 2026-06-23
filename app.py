@@ -542,12 +542,52 @@ def valhalla_params():
     })
 
 
+@app.route("/api/proxy/valhalla", methods=["POST"])
+def proxy_valhalla():
+    """
+    Thin proxy: forwards the browser's pre-built Valhalla request to the
+    routing engine with a browser-like User-Agent.
+
+    Solves two problems simultaneously:
+    - CORS: browser POSTs here (same origin) instead of cross-origin to Valhalla
+    - 405: public Valhalla (valhalla.openstreetmap.de) blocks python-requests
+            User-Agent; this sends a browser UA instead
+    """
+    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002")
+    raw_body = request.get_data()
+    try:
+        resp = requests.post(
+            f"{valhalla_url}/route",
+            data=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "en-AU,en;q=0.9",
+                "Origin": valhalla_url,
+                "Referer": valhalla_url + "/",
+            },
+            timeout=30,
+        )
+        return resp.content, resp.status_code, {"Content-Type": "application/json"}
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Routing engine not available"}), 503
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Routing engine timed out"}), 503
+    except Exception as e:
+        logger.exception("Valhalla proxy error")
+        return jsonify({"error": f"Proxy error: {e}"}), 500
+
+
 @app.route("/api/route-geometry", methods=["POST"])
 def route_geometry():
     """
     Calculate an actual truck route via Valhalla server-side and return GeoJSON.
     Kept for local development where Valhalla runs on localhost.
-    For cloud deployments use /api/valhalla-params + browser-direct Valhalla call.
+    For cloud deployments use /api/valhalla-params + /api/proxy/valhalla.
     """
     body = request.get_json(silent=True) or {}
     ctx, err = _prepare_valhalla_context(body)
