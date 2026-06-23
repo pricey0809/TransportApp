@@ -545,33 +545,30 @@ def valhalla_params():
 @app.route("/api/proxy/valhalla", methods=["POST"])
 def proxy_valhalla():
     """
-    Thin proxy: forwards the browser's pre-built Valhalla request to the
-    routing engine with a browser-like User-Agent.
+    Thin proxy: forwards the browser's Valhalla request to the routing engine.
 
-    Solves two problems simultaneously:
-    - CORS: browser POSTs here (same origin) instead of cross-origin to Valhalla
-    - 405: public Valhalla (valhalla.openstreetmap.de) blocks python-requests
-            User-Agent; this sends a browser UA instead
+    Supports two backends:
+    - Local Valhalla (VALHALLA_URL=http://localhost:8002) — dev
+    - Stadia Maps  (VALHALLA_URL=https://api.stadiamaps.com + STADIA_API_KEY) — prod
+      Stadia's endpoint is /route/v1 (not /route); auth via Authorization header.
     """
-    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002")
+    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002").rstrip("/")
+    stadia_key   = os.environ.get("STADIA_API_KEY", "")
+
+    # Stadia Maps uses a versioned path; stock Valhalla uses /route
+    is_stadia   = "stadiamaps" in valhalla_url
+    route_url   = f"{valhalla_url}/route/v1" if is_stadia else f"{valhalla_url}/route"
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept":        "application/json",
+    }
+    if stadia_key:
+        headers["Authorization"] = f"Stadia-Auth {stadia_key}"
+
     raw_body = request.get_data()
     try:
-        resp = requests.post(
-            f"{valhalla_url}/route",
-            data=raw_body,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": (
-                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-                ),
-                "Accept": "application/json, text/plain, */*",
-                "Accept-Language": "en-AU,en;q=0.9",
-                "Origin": valhalla_url,
-                "Referer": valhalla_url + "/",
-            },
-            timeout=30,
-        )
+        resp = requests.post(route_url, data=raw_body, headers=headers, timeout=30)
         if not resp.ok:
             # Valhalla returned an error — extract text and return clean JSON
             # (never forward raw HTML pages to the browser)
@@ -710,7 +707,18 @@ def valhalla_status():
     Proxy Valhalla's /status endpoint so the frontend can check whether the
     self-hosted routing engine is up without being blocked by CORS.
     """
-    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002")
+    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002").rstrip("/")
+    stadia_key   = os.environ.get("STADIA_API_KEY", "")
+    is_stadia    = "stadiamaps" in valhalla_url
+
+    if is_stadia:
+        # Stadia Maps doesn't expose a /status — report healthy based on config
+        return jsonify({
+            "status": "up",
+            "url":    valhalla_url,
+            "detail": {"provider": "Stadia Maps", "authenticated": bool(stadia_key)},
+        })
+
     try:
         resp = requests.get(f"{valhalla_url}/status", timeout=5)
         resp.raise_for_status()
