@@ -330,66 +330,40 @@ def check_dangerous_goods():
     return jsonify(result)
 
 
-# ── Valhalla route geometry ───────────────────────────────────────────────────
+# ── Shared Valhalla setup helper ──────────────────────────────────────────────
 
-@app.route("/api/route-geometry", methods=["POST"])
-def route_geometry():
+def _prepare_valhalla_context(body: dict):
     """
-    Calculate an actual truck route via Valhalla and return GeoJSON.
-
-    Applies:
-    - DG tunnel avoidance  (when dg_class present + load is placard quantity)
-    - Oversize conservative routing (when manual_dimensions trigger a permit class)
-
-    Required body fields:
-        origin, destination, combination_code
-
-    Optional body fields (same as /api/route for vehicle config):
-        length_m, mass_scheme, is_pbs, manual_gvm_t, manual_dimensions
-
-    Optional DG fields (triggers tunnel avoidance if placard load):
-        dg_class, dg_quantity, dg_un_number, dg_packing_group
+    Validate request, geocode addresses, classify DG/oversize loads, and build
+    Valhalla costing options.  Shared by /api/route-geometry and /api/valhalla-params.
 
     Returns:
-        {
-          "route":          GeoJSON FeatureCollection (LineString),
-          "summary":        { distance_km, duration_min, origin, destination, vehicle_label },
-          "tunnels_avoided": [ { name, state, restriction_level, polygon }, ... ],
-          "maps_url":       Google Maps URL with actual route waypoints,
-        }
-
-    Errors:
-        400  — missing/invalid params or geocoding failure
-        502  — Valhalla returned an error response
-        503  — Valhalla is not reachable (engine down)
+        (ctx_dict, None)            on success
+        (None, (error_dict, code))  on validation/geocoding failure — caller
+                                    should ``return jsonify(error_dict), code``
     """
-    body = request.get_json(silent=True) or {}
-
     origin           = (body.get("origin")           or "").strip()
     destination      = (body.get("destination")      or "").strip()
     combination_code = (body.get("combination_code") or "").strip()
 
     if not origin:
-        return jsonify({"error": "origin is required"}), 400
+        return None, ({"error": "origin is required"}, 400)
     if not destination:
-        return jsonify({"error": "destination is required"}), 400
+        return None, ({"error": "destination is required"}, 400)
     if not combination_code:
-        return jsonify({"error": "combination_code is required"}), 400
+        return None, ({"error": "combination_code is required"}, 400)
 
     combo = get_combination(combination_code)
     if combo is None:
-        return jsonify({"error": f"Unknown combination_code: {combination_code!r}"}), 400
+        return None, ({"error": f"Unknown combination_code: {combination_code!r}"}, 400)
 
-    # ── Parse vehicle config ──────────────────────────────────────────────────
-    length_m_raw       = body.get("length_m")
-    mass_scheme        = (body.get("mass_scheme") or "").strip() or None
-    is_pbs             = bool(body.get("is_pbs", False))
-    manual_gvm_raw     = body.get("manual_gvm_t")
-    manual_dimensions  = body.get("manual_dimensions") or None
+    length_m_raw      = body.get("length_m")
+    mass_scheme       = (body.get("mass_scheme") or "").strip() or None
+    is_pbs            = bool(body.get("is_pbs", False))
+    manual_gvm_raw    = body.get("manual_gvm_t")
+    manual_dimensions = body.get("manual_dimensions") or None
+    is_manual         = combo.get("requires_manual_dimensions") or combo.get("requires_oversize_form")
 
-    is_manual = combo.get("requires_manual_dimensions") or combo.get("requires_oversize_form")
-
-    # Resolve length
     length_m: float | None = None
     if not is_manual:
         valid_lengths = [l["length_m"] for l in combo.get("lengths", [])]
@@ -399,27 +373,24 @@ def route_geometry():
             try:
                 length_m = float(length_m_raw)
             except (TypeError, ValueError):
-                return jsonify({"error": "length_m must be a number"}), 400
+                return None, ({"error": "length_m must be a number"}, 400)
 
-    # Resolve PBS GVM
     manual_gvm_t: float | None = None
     if is_pbs:
         try:
             manual_gvm_t = float(manual_gvm_raw)
         except (TypeError, ValueError):
-            return jsonify({"error": "manual_gvm_t is required when is_pbs is true"}), 400
+            return None, ({"error": "manual_gvm_t is required when is_pbs is true"}, 400)
 
-    # ── Classify DG load (optional) ───────────────────────────────────────────
+    # DG classification
     is_placard_load = False
     dg_tunnel_flag  = "none"
-
     dg_class = (body.get("dg_class") or "").strip()
     if dg_class:
         try:
             dg_quantity = float(body.get("dg_quantity", 0))
         except (TypeError, ValueError):
             dg_quantity = 0.0
-
         dg_result = classify_dg_load(
             dg_class,
             un_number     = (body.get("dg_un_number") or "").strip(),
@@ -430,7 +401,7 @@ def route_geometry():
             is_placard_load = bool(dg_result.get("is_placard_load", False))
             dg_tunnel_flag  = dg_result.get("tunnel_flag", "none")
 
-    # ── Classify oversize permit (only for manual-dimension combinations) ─────
+    # Oversize permit classification
     permit_class = "none"
     if is_manual and isinstance(manual_dimensions, dict):
         try:
@@ -444,51 +415,155 @@ def route_geometry():
         except (TypeError, ValueError):
             pass
 
-    # ── Geocode ───────────────────────────────────────────────────────────────
+    # Geocode
     origin_latlon = _geocode(origin)
     dest_latlon   = _geocode(destination)
-
     if origin_latlon is None:
-        return jsonify({
-            "error": (
-                f"Could not geocode origin {origin!r}. "
-                "Try a more specific Australian address (e.g. 'Brisbane QLD' or '1 George St Sydney NSW')."
-            )
-        }), 400
+        return None, ({"error": (
+            f"Could not geocode origin {origin!r}. "
+            "Try a more specific Australian address (e.g. 'Brisbane QLD' or '1 George St Sydney NSW')."
+        )}, 400)
     if dest_latlon is None:
-        return jsonify({
-            "error": (
-                f"Could not geocode destination {destination!r}. "
-                "Try a more specific Australian address."
-            )
-        }), 400
+        return None, ({"error": (
+            f"Could not geocode destination {destination!r}. "
+            "Try a more specific Australian address."
+        )}, 400)
 
-    # ── Build Valhalla costing options ────────────────────────────────────────
+    # Costing options
     try:
         costing_opts = get_costing_options(
-            combination_code,
-            length_m,
-            mass_scheme,
-            is_pbs             = is_pbs,
-            manual_gvm_t       = manual_gvm_t,
-            manual_dimensions  = manual_dimensions,
-            is_placard_load    = is_placard_load,
-            dg_tunnel_flag     = dg_tunnel_flag,
-            permit_class       = permit_class,
+            combination_code, length_m, mass_scheme,
+            is_pbs            = is_pbs,
+            manual_gvm_t      = manual_gvm_t,
+            manual_dimensions = manual_dimensions,
+            is_placard_load   = is_placard_load,
+            dg_tunnel_flag    = dg_tunnel_flag,
+            permit_class      = permit_class,
         )
     except (ManualDimensionsRequired, PBSGVMRequired, KeyError, ValueError) as e:
-        return jsonify({"error": str(e)}), 400
+        return None, ({"error": str(e)}, 400)
+
+    # Tunnels avoided (derived from costing options)
+    avoid_polygons_sent = costing_opts.get("avoid_polygons", [])
+    if not avoid_polygons_sent:
+        tunnels_avoided: list[dict] = []
+    elif dg_tunnel_flag == "restricted":
+        tunnels_avoided = [
+            {"name": t["name"], "state": t["state"],
+             "restriction_level": t["restriction_level"], "polygon": t["polygon"]}
+            for t in TUNNEL_POLYGONS if t["restriction_level"] == "restricted"
+        ]
+    else:
+        tunnels_avoided = [
+            {"name": t["name"], "state": t["state"],
+             "restriction_level": t["restriction_level"], "polygon": t["polygon"]}
+            for t in TUNNEL_POLYGONS
+        ]
+
+    # Vehicle label
+    parts = [combo["label"]]
+    if length_m is not None:
+        parts.append(f"{length_m:g} m")
+    if mass_scheme and mass_scheme in combo.get("mass_schemes", {}):
+        scheme_data   = combo["mass_schemes"][mass_scheme]
+        effective_gvm = manual_gvm_t if is_pbs else scheme_data["gvm_t"]
+        parts.append(scheme_data["label"])
+        parts.append(f"{effective_gvm:g} t GVM" + (" — PBS" if is_pbs else ""))
+    vehicle_label = " — ".join(parts)
+
+    return {
+        "origin":           origin,
+        "destination":      destination,
+        "origin_latlon":    origin_latlon,
+        "dest_latlon":      dest_latlon,
+        "costing_opts":     costing_opts,
+        "tunnels_avoided":  tunnels_avoided,
+        "vehicle_label":    vehicle_label,
+        "is_placard_load":  is_placard_load,
+        "permit_class":     permit_class,
+    }, None
+
+
+# ── Valhalla route geometry ───────────────────────────────────────────────────
+
+@app.route("/api/valhalla-params", methods=["POST"])
+def valhalla_params():
+    """
+    Return geocoded coordinates and a pre-built Valhalla /route request body
+    for the browser to call Valhalla directly.
+
+    This sidesteps server-to-server blocks on public Valhalla instances (which
+    return 405 for non-browser requests) while keeping geocoding and costing
+    logic server-side.
+
+    Returns:
+        {
+          "valhalla_url":     URL the browser should POST to,
+          "valhalla_request": complete Valhalla /route request body,
+          "origin":           { lat, lon, label },
+          "destination":      { lat, lon, label },
+          "vehicle_label":    human-readable vehicle description,
+          "tunnels_avoided":  [ { name, state, restriction_level, polygon }, ... ],
+          "is_placard_load":  bool,
+          "permit_class":     str,
+        }
+    """
+    body = request.get_json(silent=True) or {}
+    ctx, err = _prepare_valhalla_context(body)
+    if err:
+        return jsonify(err[0]), err[1]
+
+    valhalla_url = os.environ.get("VALHALLA_URL", "http://localhost:8002")
+
+    valhalla_request: dict = {
+        "locations": [
+            {"lon": ctx["origin_latlon"][1], "lat": ctx["origin_latlon"][0]},
+            {"lon": ctx["dest_latlon"][1],   "lat": ctx["dest_latlon"][0]},
+        ],
+        "costing":         ctx["costing_opts"]["costing"],
+        "units":           "kilometres",
+        "directions_type": "instructions",
+        "language":        "en-AU",
+    }
+    if ctx["costing_opts"].get("costing_options"):
+        valhalla_request["costing_options"] = ctx["costing_opts"]["costing_options"]
+    if ctx["costing_opts"].get("avoid_polygons"):
+        valhalla_request["avoid_polygons"] = ctx["costing_opts"]["avoid_polygons"]
+
+    return jsonify({
+        "valhalla_url":     valhalla_url,
+        "valhalla_request": valhalla_request,
+        "origin":      {"lat": ctx["origin_latlon"][0], "lon": ctx["origin_latlon"][1], "label": ctx["origin"]},
+        "destination": {"lat": ctx["dest_latlon"][0],   "lon": ctx["dest_latlon"][1],   "label": ctx["destination"]},
+        "vehicle_label":   ctx["vehicle_label"],
+        "tunnels_avoided": ctx["tunnels_avoided"],
+        "is_placard_load": ctx["is_placard_load"],
+        "permit_class":    ctx["permit_class"],
+    })
+
+
+@app.route("/api/route-geometry", methods=["POST"])
+def route_geometry():
+    """
+    Calculate an actual truck route via Valhalla server-side and return GeoJSON.
+    Kept for local development where Valhalla runs on localhost.
+    For cloud deployments use /api/valhalla-params + browser-direct Valhalla call.
+    """
+    body = request.get_json(silent=True) or {}
+    ctx, err = _prepare_valhalla_context(body)
+    if err:
+        return jsonify(err[0]), err[1]
 
     # ── Call Valhalla /route ──────────────────────────────────────────────────
     try:
         vr = valhalla_route(
             locations = [
-                {"lon": origin_latlon[1], "lat": origin_latlon[0]},
-                {"lon": dest_latlon[1],   "lat": dest_latlon[0]},
+                {"lon": ctx["origin_latlon"][1], "lat": ctx["origin_latlon"][0]},
+                {"lon": ctx["dest_latlon"][1],   "lat": ctx["dest_latlon"][0]},
             ],
-            costing         = costing_opts["costing"],
-            costing_options = costing_opts.get("costing_options"),
-            avoid_polygons  = costing_opts.get("avoid_polygons") or None,
+            costing         = ctx["costing_opts"]["costing"],
+            costing_options = ctx["costing_opts"].get("costing_options"),
+            avoid_polygons  = ctx["costing_opts"].get("avoid_polygons") or None,
         )
     except requests.exceptions.ConnectionError:
         return jsonify({
@@ -547,79 +622,32 @@ def route_geometry():
     distance_km  = round(trip.get("summary", {}).get("length", 0), 1)
     duration_min = round(trip.get("summary", {}).get("time",   0) / 60)
 
-    # ── Which tunnels were sent to avoid_polygons? ────────────────────────────
-    #
-    # Re-derive from the same logic used in get_avoid_polygons so we can attach
-    # tunnel metadata (name, state, restriction_level) to the response, giving
-    # the caller proof of what was avoided.
-    avoid_polygons_sent = costing_opts.get("avoid_polygons", [])
-    if not avoid_polygons_sent:
-        tunnels_avoided: list[dict] = []
-    elif dg_tunnel_flag == "restricted":
-        tunnels_avoided = [
-            {
-                "name":              t["name"],
-                "state":             t["state"],
-                "restriction_level": t["restriction_level"],
-                "polygon":           t["polygon"],
-            }
-            for t in TUNNEL_POLYGONS
-            if t["restriction_level"] == "restricted"
-        ]
-    else:
-        tunnels_avoided = [
-            {
-                "name":              t["name"],
-                "state":             t["state"],
-                "restriction_level": t["restriction_level"],
-                "polygon":           t["polygon"],
-            }
-            for t in TUNNEL_POLYGONS
-        ]
-
-    # ── Build vehicle label ───────────────────────────────────────────────────
-    parts = [combo["label"]]
-    if length_m is not None:
-        parts.append(f"{length_m:g} m")
-    if mass_scheme and mass_scheme in combo.get("mass_schemes", {}):
-        scheme_data  = combo["mass_schemes"][mass_scheme]
-        effective_gvm = manual_gvm_t if is_pbs else scheme_data["gvm_t"]
-        parts.append(scheme_data["label"])
-        parts.append(f"{effective_gvm:g} t GVM" + (" — PBS" if is_pbs else ""))
-    vehicle_label = " — ".join(parts)
-
-    # ── Google Maps URL from actual waypoints ─────────────────────────────────
-    maps_url = _build_route_maps_url(shape_coords, origin_latlon, dest_latlon)
+    maps_url = _build_route_maps_url(shape_coords, ctx["origin_latlon"], ctx["dest_latlon"])
 
     return jsonify({
         "route": {
             "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "LineString",
-                        "coordinates": shape_coords,
-                    },
-                    "properties": {
-                        "distance_km":          distance_km,
-                        "duration_min":         duration_min,
-                        "vehicle_label":        vehicle_label,
-                        "is_placard_load":      is_placard_load,
-                        "permit_class":         permit_class,
-                        "tunnels_avoided_count": len(tunnels_avoided),
-                    },
-                }
-            ],
+            "features": [{
+                "type": "Feature",
+                "geometry": {"type": "LineString", "coordinates": shape_coords},
+                "properties": {
+                    "distance_km":           distance_km,
+                    "duration_min":          duration_min,
+                    "vehicle_label":         ctx["vehicle_label"],
+                    "is_placard_load":       ctx["is_placard_load"],
+                    "permit_class":          ctx["permit_class"],
+                    "tunnels_avoided_count": len(ctx["tunnels_avoided"]),
+                },
+            }],
         },
         "summary": {
             "distance_km":  distance_km,
             "duration_min": duration_min,
-            "origin":       {"lat": origin_latlon[0], "lon": origin_latlon[1], "label": origin},
-            "destination":  {"lat": dest_latlon[0],   "lon": dest_latlon[1],   "label": destination},
-            "vehicle_label": vehicle_label,
+            "origin":       {"lat": ctx["origin_latlon"][0], "lon": ctx["origin_latlon"][1], "label": ctx["origin"]},
+            "destination":  {"lat": ctx["dest_latlon"][0],   "lon": ctx["dest_latlon"][1],   "label": ctx["destination"]},
+            "vehicle_label": ctx["vehicle_label"],
         },
-        "tunnels_avoided": tunnels_avoided,
+        "tunnels_avoided": ctx["tunnels_avoided"],
         "maps_url":    maps_url,
         "maneuvers":   all_maneuvers,
     })

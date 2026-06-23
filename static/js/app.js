@@ -288,7 +288,59 @@ async function handleDGQuery() {
   renderDGResults(data);
 }
 
+// ── Valhalla polyline decoder ─────────────────────────────────────────────────
+// Valhalla uses a 6-decimal-precision (1e6) variant of Google Encoded Polyline.
+// Output: [[lon, lat], ...] in GeoJSON coordinate order.
+function _decodeShape(encoded) {
+  let index = 0, lat = 0, lng = 0;
+  const coords = [];
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    shift = 0; result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    coords.push([lng / 1e6, lat / 1e6]); // GeoJSON: [lon, lat]
+  }
+  return coords;
+}
+
+// Build a Google Maps directions URL from Valhalla shape coordinates.
+// shapeCoords: [[lon, lat], ...]  origin/destination: { lat, lon }
+function _buildMapsUrl(shapeCoords, origin, destination) {
+  const params = new URLSearchParams({
+    api:         '1',
+    origin:      `${origin.lat.toFixed(6)},${origin.lon.toFixed(6)}`,
+    destination: `${destination.lat.toFixed(6)},${destination.lon.toFixed(6)}`,
+    travelmode:  'driving',
+  });
+  if (shapeCoords.length > 2) {
+    const interior = shapeCoords.slice(1, -1);
+    const step     = Math.max(1, Math.floor(interior.length / 6));
+    const sampled  = interior.filter((_, i) => i % step === 0).slice(0, 6);
+    if (sampled.length > 0) {
+      // shapeCoords are [lon, lat]; Google Maps needs "lat,lon"
+      params.set('waypoints', sampled.map(([lon, lat]) => `${lat.toFixed(6)},${lon.toFixed(6)}`).join('|'));
+    }
+  }
+  return 'https://www.google.com/maps/dir/?' + params.toString();
+}
+
 // ── Route geometry (Valhalla) ─────────────────────────────────────────────────
+// Two-step approach: server computes geocoding + costing params (/api/valhalla-params),
+// then browser POSTs directly to Valhalla. This bypasses server-to-server blocks
+// on public Valhalla (405) while keeping geocoding + costing logic server-side.
 async function handleRouteGeometry(origin, destination, combo) {
   if (!combo) return;
 
@@ -310,37 +362,109 @@ async function handleRouteGeometry(origin, destination, combo) {
     }
   }
 
-  const resp = await fetch('/api/route-geometry', {
+  // ── Step 1: Server computes geocoding + Valhalla request params ─────────────
+  const paramsResp = await fetch('/api/valhalla-params', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(payload),
   });
 
-  if (resp.status === 503) {
-    // Valhalla is down — show a soft note, not a hard error
-    document.getElementById('valhallaOfflineNote').classList.remove('d-none');
-    return;
-  }
-
-  const data = await resp.json();
-  if (!resp.ok) {
-    if (data.error_type === 'height_restricted') {
+  const paramsData = await paramsResp.json();
+  if (!paramsResp.ok) {
+    if (paramsData.error_type === 'height_restricted') {
       document.getElementById('heightRestrictedAlert').classList.remove('d-none');
       return;
     }
-    // Non-fatal — NHVR result is still shown, but surface the error so it's visible
-    console.warn('Route geometry error:', data.error);
     document.getElementById('valhallaOfflineNote').classList.remove('d-none');
     document.getElementById('valhallaOfflineNoteText').textContent =
-      data.error || 'Route map unavailable.';
+      paramsData.error || 'Route map unavailable.';
     return;
   }
+
+  // ── Step 2: Browser calls Valhalla directly ────────────────────────────────
+  let vr;
+  try {
+    const vResp = await fetch(`${paramsData.valhalla_url}/route`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(paramsData.valhalla_request),
+    });
+    vr = await vResp.json();
+    if (!vResp.ok || vr.error) {
+      if (vr.error_code === 442) {
+        document.getElementById('heightRestrictedAlert').classList.remove('d-none');
+        return;
+      }
+      throw new Error(vr.error || `HTTP ${vResp.status}`);
+    }
+  } catch (err) {
+    document.getElementById('valhallaOfflineNote').classList.remove('d-none');
+    document.getElementById('valhallaOfflineNoteText').textContent =
+      'Route map unavailable — ' + err.message;
+    return;
+  }
+
+  // ── Step 3: Decode shape and extract maneuvers ─────────────────────────────
+  const shapeCoords  = [];
+  const allManeuvers = [];
+  let shapeOffset = 0;
+
+  for (const leg of vr.trip?.legs ?? []) {
+    const legCoords = _decodeShape(leg.shape);
+    for (const m of leg.maneuvers ?? []) {
+      allManeuvers.push({
+        type:              m.type              ?? 0,
+        instruction:       m.instruction       ?? '',
+        verbal_pre:        m.verbal_pre_transition_instruction   ?? '',
+        verbal_alert:      m.verbal_transition_alert_instruction ?? '',
+        street_names:      m.street_names      ?? [],
+        length:            Math.round((m.length ?? 0) * 1000) / 1000,
+        time:              Math.round(m.time   ?? 0),
+        begin_shape_index: (m.begin_shape_index ?? 0) + shapeOffset,
+        end_shape_index:   (m.end_shape_index   ?? 0) + shapeOffset,
+      });
+    }
+    shapeCoords.push(...legCoords);
+    shapeOffset += legCoords.length;
+  }
+
+  const distanceKm  = Math.round((vr.trip?.summary?.length ?? 0) * 10) / 10;
+  const durationMin = Math.round((vr.trip?.summary?.time   ?? 0) / 60);
+  const mapsUrl     = _buildMapsUrl(shapeCoords, paramsData.origin, paramsData.destination);
+
+  const data = {
+    route: {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: shapeCoords },
+        properties: {
+          distance_km:           distanceKm,
+          duration_min:          durationMin,
+          vehicle_label:         paramsData.vehicle_label,
+          is_placard_load:       paramsData.is_placard_load,
+          permit_class:          paramsData.permit_class,
+          tunnels_avoided_count: paramsData.tunnels_avoided.length,
+        },
+      }],
+    },
+    summary: {
+      distance_km:  distanceKm,
+      duration_min: durationMin,
+      origin:       paramsData.origin,
+      destination:  paramsData.destination,
+      vehicle_label: paramsData.vehicle_label,
+    },
+    tunnels_avoided: paramsData.tunnels_avoided,
+    maneuvers:       allManeuvers,
+    maps_url:        mapsUrl,
+  };
 
   NAV.lastPayload = payload;  // stored for off-route recalculate
   renderRouteMap(data);
 
   // Update the Google Maps button with actual computed waypoints
-  document.getElementById('btnGoogleMaps').href = data.maps_url;
+  document.getElementById('btnGoogleMaps').href = mapsUrl;
 }
 
 // ── Shared vehicle payload builder ────────────────────────────────────────────
