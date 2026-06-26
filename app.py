@@ -521,7 +521,7 @@ def valhalla_params():
             {"lon": ctx["dest_latlon"][1],   "lat": ctx["dest_latlon"][0]},
         ],
         "costing":         ctx["costing_opts"]["costing"],
-        "units":           "kilometres",
+        "units":           "km",
         "directions_type": "instructions",
         "language":        "en-US",
     }
