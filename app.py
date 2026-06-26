@@ -443,22 +443,42 @@ def _prepare_valhalla_context(body: dict):
     except (ManualDimensionsRequired, PBSGVMRequired, KeyError, ValueError) as e:
         return None, ({"error": str(e)}, 400)
 
-    # Tunnels avoided (derived from costing options)
+    # Tunnels avoided — filtered to route-relevant only via bounding box check.
+    # A tunnel is included only if its polygon centroid falls within ~50 km of
+    # the straight-line corridor between origin and destination.  This stops
+    # inland QLD routes being affected by Sydney/Melbourne tunnel rules.
+    # ~50 km expressed in degrees: 0.45° lat, 0.51° lon at ~27°S average.
+    _PAD_LAT = 0.45
+    _PAD_LON = 0.51
+    _o_lat, _o_lon = origin_latlon
+    _d_lat, _d_lon = dest_latlon
+    _bb_min_lat = min(_o_lat, _d_lat) - _PAD_LAT
+    _bb_max_lat = max(_o_lat, _d_lat) + _PAD_LAT
+    _bb_min_lon = min(_o_lon, _d_lon) - _PAD_LON
+    _bb_max_lon = max(_o_lon, _d_lon) + _PAD_LON
+
+    def _tunnel_near_route(t: dict) -> bool:
+        ring = t["polygon"]["coordinates"][0][:-1]   # drop repeated closing coord
+        c_lat = sum(c[1] for c in ring) / len(ring)
+        c_lon = sum(c[0] for c in ring) / len(ring)
+        return _bb_min_lat <= c_lat <= _bb_max_lat and _bb_min_lon <= c_lon <= _bb_max_lon
+
     avoid_polygons_sent = costing_opts.get("avoid_polygons", [])
     if not avoid_polygons_sent:
         tunnels_avoided: list[dict] = []
-    elif dg_tunnel_flag == "restricted":
-        tunnels_avoided = [
-            {"name": t["name"], "state": t["state"],
-             "restriction_level": t["restriction_level"], "polygon": t["polygon"]}
-            for t in TUNNEL_POLYGONS if t["restriction_level"] == "restricted"
-        ]
     else:
+        if dg_tunnel_flag == "restricted":
+            _candidates = [t for t in TUNNEL_POLYGONS if t["restriction_level"] == "restricted"]
+        else:
+            _candidates = list(TUNNEL_POLYGONS)
+        _near = [t for t in _candidates if _tunnel_near_route(t)]
         tunnels_avoided = [
             {"name": t["name"], "state": t["state"],
              "restriction_level": t["restriction_level"], "polygon": t["polygon"]}
-            for t in TUNNEL_POLYGONS
+            for t in _near
         ]
+        # Also narrow the avoid_polygons sent to Valhalla to route-relevant only
+        costing_opts["avoid_polygons"] = [t["polygon"] for t in _near]
 
     # Vehicle label
     parts = [combo["label"]]

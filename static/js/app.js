@@ -178,6 +178,10 @@ form.addEventListener('submit', async (e) => {
   hideError();
   resultsEl.classList.add('d-none');
   document.getElementById('dgBlock').classList.add('d-none');
+  document.getElementById('dgLoadCard').classList.add('d-none');
+  // Switch back to Tab 1 for each new search
+  const tabRouteBtn = document.getElementById('tab-route-btn');
+  if (tabRouteBtn) bootstrap.Tab.getOrCreateInstance(tabRouteBtn).show();
   hideMapPanel();
 
   const origin      = document.getElementById('origin').value.trim();
@@ -510,6 +514,16 @@ let _map         = null;
 let _routeLayer  = null;
 let _markerGroup = null;
 let _tunnelGroup = null;
+let _nhvrStatus  = null;    // 'approved' | 'conditional' | 'restricted' | null
+let _lastNavDist  = Infinity; // last distance-to-turn (m) — populates HUD on open
+let _lastNavSpeed = null;     // last GPS speed (m/s) — populates HUD on open
+
+function _routeColor() {
+  if (_nhvrStatus === 'approved')    return '#198754';
+  if (_nhvrStatus === 'conditional') return '#fd7e14';
+  if (_nhvrStatus === 'restricted')  return '#dc3545';
+  return '#0d6efd';   // default blue — status not yet known
+}
 
 function ensureMap() {
   if (_map) return;
@@ -539,7 +553,7 @@ function renderRouteMap(data) {
   // ── Route line ──────────────────────────────────────────────────────────────
   // GeoJSON coordinates are [lon, lat]; Leaflet wants [lat, lon]
   const leafletCoords = feature.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
-  _routeLayer = L.polyline(leafletCoords, { color: '#0d6efd', weight: 5, opacity: 0.85 });
+  _routeLayer = L.polyline(leafletCoords, { color: _routeColor(), weight: 5, opacity: 0.85 });
   _routeLayer.addTo(_map);
 
   // ── Origin / destination markers ────────────────────────────────────────────
@@ -646,6 +660,9 @@ function renderRouteMap(data) {
     renderStepList(NAV.maneuvers);
     document.getElementById('stepListPanel').classList.remove('d-none');
   }
+
+  // Update Tab 1 DG load card with route-filtered tunnel list
+  updateDGLoadTunnels(tunnels_avoided);
 }
 
 function hideMapPanel() {
@@ -660,6 +677,10 @@ function hideMapPanel() {
 
 // ── Render DG results ─────────────────────────────────────────────────────────
 function renderDGResults(data) {
+  // ── Tab 1: focused Load Requirements card ──────────────────────────────────
+  renderDGLoadCard(data);
+
+  // ── Tab 2: full verbose DG breakdown ───────────────────────────────────────
   const dgBlock = document.getElementById('dgBlock');
 
   const banner = document.getElementById('dgPlacarBanner');
@@ -778,6 +799,75 @@ function renderDGResults(data) {
   dgBlock.classList.remove('d-none');
 }
 
+// ── Tab 1: focused Load Requirements card ─────────────────────────────────────
+function renderDGLoadCard(data) {
+  const card          = document.getElementById('dgLoadCard');
+  const placardIcon   = document.getElementById('dgLoadPlacardIcon');
+  const placardTitle  = document.getElementById('dgLoadPlacardTitle');
+  const placardThresh = document.getElementById('dgLoadPlacardThreshold');
+  const placardDetail = document.getElementById('dgLoadPlacardDetail');
+  const placardPos    = document.getElementById('dgLoadPlacardPositions');
+
+  if (data.is_placard_load === true) {
+    placardIcon.className  = 'bi bi-exclamation-diamond-fill text-danger fs-4 flex-shrink-0 mt-1';
+    placardTitle.textContent = 'Placard load';
+    placardThresh.textContent = data.placard_description || '';
+
+    // ADG Code: Class diamond placards required on all four faces
+    const cls = escHtml(data.dg_class);
+    placardPos.innerHTML =
+      `Class <strong>${cls}</strong> diamond — front, rear, and both sides of vehicle.`;
+    placardDetail.classList.remove('d-none');
+
+  } else if (data.is_placard_load === false) {
+    placardIcon.className  = 'bi bi-check-circle-fill text-success fs-4 flex-shrink-0 mt-1';
+    placardTitle.textContent = 'Below placard threshold — no placards required';
+    placardThresh.textContent = data.placard_description || '';
+    placardDetail.classList.add('d-none');
+
+  } else {
+    // Indeterminate (Class 7 radioactive — depends on label category)
+    placardIcon.className  = 'bi bi-question-circle-fill text-warning fs-4 flex-shrink-0 mt-1';
+    placardTitle.textContent = 'Placard status — verify with ARPANSA';
+    placardThresh.textContent = data.placard_description || '';
+    placardDetail.classList.add('d-none');
+  }
+
+  // Tunnel section is populated later by updateDGLoadTunnels() when route geometry arrives
+  document.getElementById('dgLoadTunnels').classList.add('d-none');
+  document.getElementById('dgLoadNoTunnels').classList.add('d-none');
+
+  card.classList.remove('d-none');
+}
+
+// ── Update Tab 1 tunnel section after route geometry loads ────────────────────
+// Called from renderRouteMap() with the route-filtered tunnels_avoided list.
+function updateDGLoadTunnels(tunnelsAvoided) {
+  const card      = document.getElementById('dgLoadCard');
+  if (card.classList.contains('d-none')) return;  // no DG entered — nothing to update
+
+  const tunnelDiv  = document.getElementById('dgLoadTunnels');
+  const tunnelList = document.getElementById('dgLoadTunnelList');
+  const noTunnel   = document.getElementById('dgLoadNoTunnels');
+
+  if (tunnelsAvoided && tunnelsAvoided.length > 0) {
+    tunnelList.innerHTML = tunnelsAvoided.map(t => {
+      const levelCls = t.restriction_level === 'restricted' ? 'text-danger' : 'text-warning';
+      const levelLbl = t.restriction_level === 'restricted' ? 'Prohibited' : 'Conditional';
+      return `<div class="mb-1">
+        <strong>${escHtml(t.name)}</strong>
+        <span class="text-muted">(${escHtml(t.state)})</span>
+        — <span class="${levelCls}">${levelLbl}</span>
+      </div>`;
+    }).join('');
+    tunnelDiv.classList.remove('d-none');
+    noTunnel.classList.add('d-none');
+  } else {
+    tunnelDiv.classList.add('d-none');
+    noTunnel.classList.remove('d-none');
+  }
+}
+
 // ── Render route results ──────────────────────────────────────────────────────
 function renderResults(payload, data) {
   document.getElementById('summaryOrigin').textContent      = payload.origin;
@@ -792,6 +882,12 @@ function renderResults(payload, data) {
   banner.className = 'alert d-flex align-items-center mb-3';
 
   const status = (data.status || 'unknown').toLowerCase();
+
+  // Store NHVR status so the route polyline reflects approval result.
+  // Recolour immediately if Valhalla already drew the line (race-condition win).
+  _nhvrStatus = status;
+  if (_routeLayer) _routeLayer.setStyle({ color: _routeColor() });
+
   const statusMap = {
     approved:    { cls: 'status-approved',    icon: 'bi-check-circle-fill',       title: 'Approved',               detail: 'This route is approved for your vehicle type.' },
     conditional: { cls: 'status-conditional', icon: 'bi-exclamation-circle-fill', title: 'Conditionally Approved', detail: 'This route is accessible subject to conditions.' },
@@ -1219,6 +1315,12 @@ function onGpsUpdate(pos) {
   checkTTSTriggers(dist);
   updateNavDisplay(dist);
 
+  _lastNavDist  = dist;
+  _lastNavSpeed = pos.coords.speed;
+  if (!document.getElementById('hudPanel').classList.contains('d-none')) {
+    updateHud(dist, pos.coords.speed);
+  }
+
   // Auto-pan map
   if (_map) _map.panTo(latlng, { animate: true, duration: 0.5 });
 }
@@ -1339,6 +1441,7 @@ function startNavigation() {
   document.getElementById('btnStartNav').classList.add('d-none');
   document.getElementById('btnStopNav').classList.remove('d-none');
   document.getElementById('btnMuteNav').classList.remove('d-none');
+  document.getElementById('btnHud').classList.remove('d-none');
   document.getElementById('offRouteAlert').classList.add('d-none');
 
   // iOS screen-lock warning
@@ -1379,9 +1482,11 @@ function stopNavigation(showStartButton = true) {
 
   if (NAV.phase !== 'arrived') NAV.phase = 'idle';
 
+  hideHud();
   document.getElementById('navBar').classList.add('d-none');
   document.getElementById('btnStopNav').classList.add('d-none');
   document.getElementById('btnMuteNav').classList.add('d-none');
+  document.getElementById('btnHud').classList.add('d-none');
   document.getElementById('navBarIosWarning').classList.add('d-none');
 
   if (showStartButton && NAV.maneuvers.length > 0) {
@@ -1451,6 +1556,64 @@ document.getElementById('btnMuteNav').addEventListener('click', () => {
   updateMuteButton();
 });
 updateMuteButton();
+
+// ── Driving HUD ───────────────────────────────────────────────────────────────
+
+function _hudEta() {
+  // Sum remaining maneuver times from the current step onwards → wall-clock ETA
+  let secs = 0;
+  for (let i = NAV.maneuverIdx; i < NAV.maneuvers.length; i++) {
+    secs += NAV.maneuvers[i].time || 0;
+  }
+  if (secs <= 0) return '—';
+  const eta = new Date(Date.now() + secs * 1000);
+  return eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function updateHud(distToTurn, speedMs) {
+  const m = NAV.maneuvers[NAV.maneuverIdx];
+  if (!m) return;
+
+  document.getElementById('hudIcon').className = `bi ${maneuverIcon(m.type)} hud-turn-icon`;
+  document.getElementById('hudInstruction').textContent = m.instruction;
+
+  const next = NAV.maneuvers[NAV.maneuverIdx + 1];
+  document.getElementById('hudNext').textContent =
+    next ? `Then: ${next.instruction}` : '';
+
+  const isLast = NAV.maneuverIdx >= NAV.maneuvers.length - 1;
+  document.getElementById('hudDistance').textContent =
+    isLast ? '' : formatDistNav(distToTurn);
+
+  document.getElementById('hudSpeed').textContent =
+    (speedMs != null && speedMs >= 0) ? Math.round(speedMs * 3.6).toString() : '—';
+
+  document.getElementById('hudEta').textContent = _hudEta();
+}
+
+function showHud() {
+  document.getElementById('hudPanel').classList.remove('d-none');
+  updateHud(_lastNavDist, _lastNavSpeed);
+  // Request portrait lock on supported browsers (best-effort)
+  if (screen.orientation?.lock) {
+    screen.orientation.lock('portrait').catch(() => {});
+  }
+}
+
+function hideHud() {
+  document.getElementById('hudPanel').classList.add('d-none');
+}
+
+document.getElementById('btnHud').addEventListener('click', () => {
+  // Prime TTS on user gesture (required by iOS)
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+  }
+  if (NAV.phase === 'idle') startNavigation();
+  showHud();
+});
+document.getElementById('btnCloseHud').addEventListener('click', hideHud);
 
 // ── Button wiring ─────────────────────────────────────────────────────────────
 

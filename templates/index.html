@@ -316,7 +316,7 @@
     <!-- Results panel -->
     <div id="results" class="d-none">
 
-      <!-- Status banner -->
+      <!-- Status banner — always visible above tabs -->
       <div id="statusBanner" class="alert d-flex align-items-center mb-3" role="alert">
         <i id="statusIcon" class="bi me-3 fs-4"></i>
         <div>
@@ -325,312 +325,393 @@
         </div>
       </div>
 
-      <!-- Route summary card -->
-      <div class="card shadow-sm mb-3">
-        <div class="card-body">
-          <h6 class="card-subtitle mb-3 text-muted">Route Summary</h6>
-          <div class="row g-2 mb-3">
-            <div class="col-12">
-              <div class="d-flex align-items-start gap-2">
-                <i class="bi bi-geo-alt-fill text-success mt-1"></i>
-                <div>
-                  <div class="text-muted small">From</div>
-                  <div id="summaryOrigin" class="fw-semibold"></div>
-                </div>
-              </div>
-            </div>
-            <div class="col-12">
-              <div class="d-flex align-items-start gap-2">
-                <i class="bi bi-geo-fill text-danger mt-1"></i>
-                <div>
-                  <div class="text-muted small">To</div>
-                  <div id="summaryDestination" class="fw-semibold"></div>
-                </div>
-              </div>
-            </div>
-            <div class="col-12">
-              <div class="d-flex align-items-start gap-2">
-                <i class="bi bi-truck-front mt-1 text-primary"></i>
-                <div>
-                  <div class="text-muted small">Vehicle</div>
-                  <div id="summaryVehicle" class="fw-semibold"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Oversize dimension summary (only shown for oversize queries) -->
-            <div id="summaryDimsRow" class="col-12 d-none">
-              <div class="d-flex align-items-start gap-2">
-                <i class="bi bi-rulers mt-1 text-secondary"></i>
-                <div>
-                  <div class="text-muted small">Dimensions</div>
-                  <div id="summaryDims" class="fw-semibold"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Conditions (shown if conditional approval) -->
-          <div id="conditionsBlock" class="d-none">
-            <hr />
-            <h6 class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Conditions</h6>
-            <ul id="conditionsList" class="mb-0 ps-3 small"></ul>
-          </div>
-
-          <!-- Restrictions (shown if restricted) -->
-          <div id="restrictionsBlock" class="d-none">
-            <hr />
-            <h6 class="text-danger"><i class="bi bi-x-circle me-1"></i>Restrictions</h6>
-            <ul id="restrictionsList" class="mb-0 ps-3 small"></ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Oversize permit block (shown only for oversize queries) ──────── -->
-      <div id="oversizeBlock" class="d-none">
-
-        <!-- Permit class banner -->
-        <div id="permitBanner" class="alert mb-3" role="alert">
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <i id="permitIcon" class="bi fs-5"></i>
-            <span id="permitTitle" class="fw-bold"></span>
-          </div>
-          <div id="permitDescription" class="small"></div>
-        </div>
-
-        <!-- Exceeded limits -->
-        <div id="exceedancesBlock" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-danger">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>Standard Limits Exceeded
-            </h6>
-            <ul id="exceedancesList" class="mb-0 ps-3 small"></ul>
-          </div>
-        </div>
-
-        <!-- Pilot / escort summary -->
-        <div id="pilotEscortBlock" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2">
-              <i class="bi bi-car-front-fill me-1 text-warning"></i>Pilot / Escort Requirements
-            </h6>
-            <div id="pilotEscortDetail" class="small"></div>
-          </div>
-        </div>
-
-        <!-- Per-state restrictions accordion -->
-        <div class="card shadow-sm mb-3">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-3 text-muted">
-              <i class="bi bi-map me-1"></i>State-Specific Restrictions
-            </h6>
-            <div id="stateAccordion" class="accordion accordion-flush"></div>
-          </div>
-        </div>
-
-        <!-- NHVR permit portal link -->
-        <div class="alert alert-info small mb-3" role="alert">
-          <i class="bi bi-info-circle-fill me-1"></i>
-          Apply for a Class 1 permit at the
-          <a href="https://online.nhvr.gov.au" target="_blank" class="alert-link">NHVR Permit Portal</a>.
-          Always verify with your state road authority before travel.
-        </div>
-
-      </div><!-- /oversizeBlock -->
-
-      <!-- ── Dangerous Goods block ──────────────────────────────────────────── -->
-      <div id="dgBlock" class="d-none">
-
-        <!-- Placard load status banner -->
-        <div id="dgPlacarBanner" class="alert mb-3" role="alert">
-          <div class="d-flex align-items-center gap-2 mb-1">
-            <i id="dgPlacarIcon" class="bi fs-5"></i>
-            <span id="dgPlacarTitle" class="fw-bold"></span>
-          </div>
-          <div id="dgPlacarDesc" class="small"></div>
-        </div>
-
-        <!-- DG summary row -->
-        <div class="card shadow-sm mb-3">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-muted">
-              <i class="bi bi-radioactive me-1"></i>Dangerous Goods Summary
-            </h6>
-            <dl class="row mb-0 small" id="dgSummaryDl"></dl>
-          </div>
-        </div>
-
-        <!-- Threshold note -->
-        <div id="dgThresholdCard" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-muted">
-              <i class="bi bi-info-circle me-1"></i>Placard Threshold Rule
-            </h6>
-            <p id="dgThresholdNote" class="mb-0 small"></p>
-          </div>
-        </div>
-
-        <!-- Tunnel restrictions -->
-        <div id="dgTunnelCard" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 id="dgTunnelTitle" class="card-subtitle mb-2">
-              <i class="bi bi-sign-stop me-1"></i>Tunnel Restrictions
-            </h6>
-            <p id="dgTunnelNote" class="mb-0 small"></p>
-          </div>
-        </div>
-
-        <!-- Segregation requirements -->
-        <div id="dgSegCard" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-warning">
-              <i class="bi bi-slash-circle me-1"></i>Segregation Requirements
-            </h6>
-            <p id="dgSegNote" class="mb-0 small"></p>
-          </div>
-        </div>
-
-        <!-- Warnings -->
-        <div id="dgWarningsCard" class="card shadow-sm mb-3 d-none">
-          <div class="card-body">
-            <h6 class="card-subtitle mb-2 text-secondary">
-              <i class="bi bi-exclamation-circle me-1"></i>Additional Notes
-            </h6>
-            <ul id="dgWarningsList" class="mb-0 ps-3 small"></ul>
-          </div>
-        </div>
-
-        <!-- ADG Code reference link -->
-        <div class="alert alert-info small mb-3" role="alert">
-          <i class="bi bi-info-circle-fill me-1"></i>
-          Thresholds are based on the ADG Code 7th Edition, Table 5.3.
-          Always verify with the
-          <a href="https://www.ntc.gov.au/codes-and-guidelines/australian-dangerous-goods-code" target="_blank" class="alert-link">NTC ADG Code</a>
-          and relevant state road authority before travel.
-        </div>
-
-      </div><!-- /dgBlock -->
-
-      <!-- ── Route map (shown when Valhalla is available) ──────────────────── -->
-      <div id="routeMapPanel" class="card shadow-sm mb-3 d-none">
-        <div class="card-body p-0">
-          <!-- Navigation instruction bar — shown when navigation active -->
-          <div id="navBar" class="d-none" style="background:#1a1a2e;color:#fff;border-radius:calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
-            <div class="d-flex align-items-center gap-3 p-3">
-              <i id="navBarIcon" class="bi bi-arrow-up-circle" style="font-size:2.8rem;min-width:2.8rem;line-height:1;flex-shrink:0;"></i>
-              <div class="flex-grow-1 overflow-hidden">
-                <div id="navBarInstruction" class="fw-bold lh-sm" style="font-size:1.15rem;"></div>
-                <div id="navBarNext" class="mt-1 opacity-75" style="font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-              </div>
-              <div id="navBarDistance" class="fw-bold text-end" style="font-size:1.6rem;min-width:4.5rem;line-height:1.1;white-space:nowrap;flex-shrink:0;"></div>
-            </div>
-            <div id="navBarIosWarning" class="d-none py-1 px-3 small" style="background:rgba(255,193,7,0.2);border-top:1px solid rgba(255,193,7,0.4);color:#ffc107;">
-              <i class="bi bi-phone me-1"></i>iOS: keep screen on — navigation pauses when locked.
-            </div>
-          </div>
-          <div id="routeMap" style="height:360px;"></div>
-        </div>
-        <div class="card-footer py-2 px-3">
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span id="routeMapDistance" class="fw-semibold small"></span>
-            <span class="text-muted small">·</span>
-            <span id="routeMapDuration" class="small text-muted"></span>
-            <div class="ms-auto d-flex gap-2 align-items-center">
-              <span id="tunnelAvoidanceBadge" class="badge bg-danger d-none">
-                <i class="bi bi-sign-stop-fill me-1"></i>
-                <span id="tunnelAvoidanceCount"></span> tunnel(s) avoided
-              </span>
-              <span id="permitClassBadge" class="badge d-none"></span>
-            </div>
-          </div>
-          <!-- Tunnel names tooltip -->
-          <div id="tunnelAvoidanceNames" class="text-muted small mt-1 d-none"></div>
-          <!-- Navigation controls -->
-          <div class="d-flex align-items-center gap-2 mt-2">
-            <button id="btnStartNav" class="btn btn-primary btn-sm d-none">
-              <i class="bi bi-play-fill me-1"></i>Start Navigation
-            </button>
-            <button id="btnStopNav" class="btn btn-outline-danger btn-sm d-none">
-              <i class="bi bi-stop-fill me-1"></i>Stop
-            </button>
-            <button id="btnMuteNav" class="btn btn-outline-secondary btn-sm d-none" title="Toggle voice directions">
-              <i class="bi bi-volume-mute-fill"></i>
-            </button>
-          </div>
-          <!-- Height disclaimer — always shown when map is visible -->
-          <div class="text-muted small mt-1">
-            <i class="bi bi-info-circle me-1"></i>Height restrictions applied where road data is available — always verify clearance against posted bridge/tunnel signage.
-          </div>
-        </div>
-      </div>
-
-      <!-- Off-route warning (shown when driver deviates from compliance-checked route) -->
-      <div id="offRouteAlert" class="alert alert-danger d-none mb-3" role="alert">
-        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
-          <div>
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Off route</strong> — your compliance-checked route has not been recalculated.
-            Return to the highlighted path, or tap Recalculate to re-plan with the same vehicle and load restrictions.
-          </div>
-          <button id="btnRecalculate" class="btn btn-danger btn-sm flex-shrink-0">
-            <i class="bi bi-arrow-repeat me-1"></i>Recalculate Route
+      <!-- ── Tab switcher ───────────────────────────────────────────────────── -->
+      <ul class="nav nav-tabs mb-3" id="resultsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-route-btn"
+                  data-bs-toggle="tab" data-bs-target="#tab-route"
+                  type="button" role="tab" aria-controls="tab-route" aria-selected="true">
+            <i class="bi bi-map me-1"></i>Route &amp; Load
           </button>
-        </div>
-      </div>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-detail-btn"
+                  data-bs-toggle="tab" data-bs-target="#tab-detail"
+                  type="button" role="tab" aria-controls="tab-detail" aria-selected="false">
+            <i class="bi bi-file-text me-1"></i>Detail &amp; Legislation
+          </button>
+        </li>
+      </ul>
 
-      <!-- Turn-by-turn step list (collapsible, shown after route loads) -->
-      <div id="stepListPanel" class="mb-3 d-none">
-        <button class="btn btn-link btn-sm text-muted p-0 text-decoration-none"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#stepListBody"
-                aria-expanded="false">
-          <i class="bi bi-list-ol me-1"></i>All steps
-          <i class="bi bi-chevron-down ms-1" style="font-size:0.7rem;"></i>
-        </button>
-        <div class="collapse mt-1" id="stepListBody">
-          <div id="stepListContent" class="border rounded overflow-auto" style="max-height:260px;"></div>
-        </div>
-      </div>
+      <div class="tab-content" id="resultsTabContent">
 
-      <!-- Height restriction blocking alert (shown when Valhalla returns error 442) -->
-      <div id="heightRestrictedAlert" class="alert alert-danger small d-none py-2" role="alert">
-        <i class="bi bi-sign-stop-fill me-1"></i>
-        <strong>No legal route found</strong> — the only path between these points is height-restricted for this vehicle.
-        Check posted bridge and tunnel clearance signs and consider an alternative start or end point.
-      </div>
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 1 — Route & Load                                              -->
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-pane fade show active" id="tab-route" role="tabpanel" aria-labelledby="tab-route-btn">
 
-      <!-- Valhalla offline / geometry error notice -->
-      <div id="valhallaOfflineNote" class="alert alert-secondary small d-none py-2" role="alert">
-        <i class="bi bi-map me-1"></i>
-        <span id="valhallaOfflineNoteText">Route map unavailable — routing engine not responding.</span>
-      </div>
+          <!-- Route summary card -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <h6 class="card-subtitle mb-3 text-muted">Route Summary</h6>
+              <div class="row g-2 mb-3">
+                <div class="col-12">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-geo-alt-fill text-success mt-1"></i>
+                    <div>
+                      <div class="text-muted small">From</div>
+                      <div id="summaryOrigin" class="fw-semibold"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-geo-fill text-danger mt-1"></i>
+                    <div>
+                      <div class="text-muted small">To</div>
+                      <div id="summaryDestination" class="fw-semibold"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-truck-front mt-1 text-primary"></i>
+                    <div>
+                      <div class="text-muted small">Vehicle</div>
+                      <div id="summaryVehicle" class="fw-semibold"></div>
+                    </div>
+                  </div>
+                </div>
 
-      <!-- Action buttons -->
-      <div class="d-grid gap-2">
-        <a id="btnGoogleMaps" href="#" target="_blank" class="btn btn-success btn-lg">
-          <i class="bi bi-map me-2"></i>Open in Google Maps
-        </a>
-        <a id="btnNHVRPlanner" href="https://routeplanner.nhvr.gov.au" target="_blank" class="btn btn-outline-secondary">
-          <i class="bi bi-box-arrow-up-right me-1"></i>NHVR Route Planner
-          <span class="small opacity-75 ms-1">— re-enter route manually</span>
-        </a>
-      </div>
+                <!-- Oversize dimension summary (only shown for oversize queries) -->
+                <div id="summaryDimsRow" class="col-12 d-none">
+                  <div class="d-flex align-items-start gap-2">
+                    <i class="bi bi-rulers mt-1 text-secondary"></i>
+                    <div>
+                      <div class="text-muted small">Dimensions</div>
+                      <div id="summaryDims" class="fw-semibold"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-      <!-- NHVR network data (collapsible) -->
-      <div class="mt-3">
-        <button
-          class="btn btn-link btn-sm text-muted p-0"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#rawData"
-        >
-          <i class="bi bi-code-slash me-1"></i>Show NHVR network data
-        </button>
-        <div class="collapse mt-2" id="rawData">
-          <pre id="rawDataContent" class="bg-light p-3 rounded small" style="max-height:300px;overflow:auto;"></pre>
-        </div>
-      </div>
+              <!-- Conditions (shown if conditional approval) -->
+              <div id="conditionsBlock" class="d-none">
+                <hr />
+                <h6 class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>Conditions</h6>
+                <ul id="conditionsList" class="mb-0 ps-3 small"></ul>
+              </div>
+
+              <!-- Restrictions (shown if restricted) -->
+              <div id="restrictionsBlock" class="d-none">
+                <hr />
+                <h6 class="text-danger"><i class="bi bi-x-circle me-1"></i>Restrictions</h6>
+                <ul id="restrictionsList" class="mb-0 ps-3 small"></ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── DG Load Requirements card (Tab 1 — simplified, driver-focused) -->
+          <!-- Only shown when a DG class is entered                            -->
+          <div id="dgLoadCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body">
+              <h6 class="card-subtitle mb-3 text-muted">
+                <i class="bi bi-radioactive me-1"></i>Load Requirements
+              </h6>
+
+              <!-- Placard status row -->
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <i id="dgLoadPlacardIcon" class="bi fs-4 flex-shrink-0 mt-1"></i>
+                <div>
+                  <div id="dgLoadPlacardTitle" class="fw-semibold"></div>
+                  <div id="dgLoadPlacardThreshold" class="small text-muted mt-1"></div>
+                </div>
+              </div>
+
+              <!-- Placard & EIP detail — only when IS a placard load -->
+              <div id="dgLoadPlacardDetail" class="d-none mt-3">
+                <div class="small fw-semibold text-muted mb-1">Placards required:</div>
+                <div id="dgLoadPlacardPositions" class="small mb-2"></div>
+                <div class="small">
+                  <span class="badge bg-warning text-dark me-1">EIP</span>
+                  Emergency Information Panel required — must be displayed and accessible.
+                </div>
+              </div>
+
+              <!-- Route-relevant tunnel restrictions — populated after geometry loads -->
+              <div id="dgLoadTunnels" class="d-none mt-3 pt-3 border-top">
+                <div class="small fw-semibold mb-1">
+                  <i class="bi bi-sign-stop-fill text-danger me-1"></i>Tunnel restrictions on this route:
+                </div>
+                <div id="dgLoadTunnelList" class="small"></div>
+              </div>
+
+              <!-- No-tunnel confirmation — shown when route loaded and no relevant tunnels -->
+              <div id="dgLoadNoTunnels" class="d-none mt-3 pt-3 border-top small text-muted">
+                <i class="bi bi-check-circle text-success me-1"></i>No DG-restricted tunnels on this route.
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Oversize permit block (shown only for oversize queries) ───── -->
+          <div id="oversizeBlock" class="d-none">
+
+            <!-- Permit class banner -->
+            <div id="permitBanner" class="alert mb-3" role="alert">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i id="permitIcon" class="bi fs-5"></i>
+                <span id="permitTitle" class="fw-bold"></span>
+              </div>
+              <div id="permitDescription" class="small"></div>
+            </div>
+
+            <!-- Exceeded limits -->
+            <div id="exceedancesBlock" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-danger">
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i>Standard Limits Exceeded
+                </h6>
+                <ul id="exceedancesList" class="mb-0 ps-3 small"></ul>
+              </div>
+            </div>
+
+            <!-- Pilot / escort summary -->
+            <div id="pilotEscortBlock" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2">
+                  <i class="bi bi-car-front-fill me-1 text-warning"></i>Pilot / Escort Requirements
+                </h6>
+                <div id="pilotEscortDetail" class="small"></div>
+              </div>
+            </div>
+
+            <!-- Per-state restrictions accordion -->
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-3 text-muted">
+                  <i class="bi bi-map me-1"></i>State-Specific Restrictions
+                </h6>
+                <div id="stateAccordion" class="accordion accordion-flush"></div>
+              </div>
+            </div>
+
+            <!-- NHVR permit portal link -->
+            <div class="alert alert-info small mb-3" role="alert">
+              <i class="bi bi-info-circle-fill me-1"></i>
+              Apply for a Class 1 permit at the
+              <a href="https://online.nhvr.gov.au" target="_blank" class="alert-link">NHVR Permit Portal</a>.
+              Always verify with your state road authority before travel.
+            </div>
+
+          </div><!-- /oversizeBlock -->
+
+          <!-- ── Route map (shown when Valhalla is available) ─────────────── -->
+          <div id="routeMapPanel" class="card shadow-sm mb-3 d-none">
+            <div class="card-body p-0">
+              <!-- Navigation instruction bar — shown when navigation active -->
+              <div id="navBar" class="d-none" style="background:#1a1a2e;color:#fff;border-radius:calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;">
+                <div class="d-flex align-items-center gap-3 p-3">
+                  <i id="navBarIcon" class="bi bi-arrow-up-circle" style="font-size:2.8rem;min-width:2.8rem;line-height:1;flex-shrink:0;"></i>
+                  <div class="flex-grow-1 overflow-hidden">
+                    <div id="navBarInstruction" class="fw-bold lh-sm" style="font-size:1.15rem;"></div>
+                    <div id="navBarNext" class="mt-1 opacity-75" style="font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                  </div>
+                  <div id="navBarDistance" class="fw-bold text-end" style="font-size:1.6rem;min-width:4.5rem;line-height:1.1;white-space:nowrap;flex-shrink:0;"></div>
+                </div>
+                <div id="navBarIosWarning" class="d-none py-1 px-3 small" style="background:rgba(255,193,7,0.2);border-top:1px solid rgba(255,193,7,0.4);color:#ffc107;">
+                  <i class="bi bi-phone me-1"></i>iOS: keep screen on — navigation pauses when locked.
+                </div>
+              </div>
+              <div id="routeMap" style="height:360px;"></div>
+            </div>
+            <div class="card-footer py-2 px-3">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="routeMapDistance" class="fw-semibold small"></span>
+                <span class="text-muted small">·</span>
+                <span id="routeMapDuration" class="small text-muted"></span>
+                <div class="ms-auto d-flex gap-2 align-items-center">
+                  <span id="tunnelAvoidanceBadge" class="badge bg-danger d-none">
+                    <i class="bi bi-sign-stop-fill me-1"></i>
+                    <span id="tunnelAvoidanceCount"></span> tunnel(s) avoided
+                  </span>
+                  <span id="permitClassBadge" class="badge d-none"></span>
+                </div>
+              </div>
+              <!-- Tunnel names tooltip -->
+              <div id="tunnelAvoidanceNames" class="text-muted small mt-1 d-none"></div>
+              <!-- Navigation controls -->
+              <div class="d-flex align-items-center gap-2 mt-2">
+                <button id="btnStartNav" class="btn btn-primary btn-sm d-none">
+                  <i class="bi bi-play-fill me-1"></i>Start Navigation
+                </button>
+                <button id="btnStopNav" class="btn btn-outline-danger btn-sm d-none">
+                  <i class="bi bi-stop-fill me-1"></i>Stop
+                </button>
+                <button id="btnMuteNav" class="btn btn-outline-secondary btn-sm d-none" title="Toggle voice directions">
+                  <i class="bi bi-volume-mute-fill"></i>
+                </button>
+                <button id="btnHud" class="btn btn-outline-info btn-sm d-none" title="Fullscreen driving HUD">
+                  <i class="bi bi-fullscreen me-1"></i>HUD
+                </button>
+              </div>
+              <!-- Height disclaimer — always shown when map is visible -->
+              <div class="text-muted small mt-1">
+                <i class="bi bi-info-circle me-1"></i>Height restrictions applied where road data is available — always verify clearance against posted bridge/tunnel signage.
+              </div>
+            </div>
+          </div>
+
+          <!-- Off-route warning -->
+          <div id="offRouteAlert" class="alert alert-danger d-none mb-3" role="alert">
+            <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+              <div>
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Off route</strong> — your compliance-checked route has not been recalculated.
+                Return to the highlighted path, or tap Recalculate to re-plan with the same vehicle and load restrictions.
+              </div>
+              <button id="btnRecalculate" class="btn btn-danger btn-sm flex-shrink-0">
+                <i class="bi bi-arrow-repeat me-1"></i>Recalculate Route
+              </button>
+            </div>
+          </div>
+
+          <!-- Turn-by-turn step list (collapsible) -->
+          <div id="stepListPanel" class="mb-3 d-none">
+            <button class="btn btn-link btn-sm text-muted p-0 text-decoration-none"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#stepListBody"
+                    aria-expanded="false">
+              <i class="bi bi-list-ol me-1"></i>All steps
+              <i class="bi bi-chevron-down ms-1" style="font-size:0.7rem;"></i>
+            </button>
+            <div class="collapse mt-1" id="stepListBody">
+              <div id="stepListContent" class="border rounded overflow-auto" style="max-height:260px;"></div>
+            </div>
+          </div>
+
+          <!-- Height restriction blocking alert -->
+          <div id="heightRestrictedAlert" class="alert alert-danger small d-none py-2" role="alert">
+            <i class="bi bi-sign-stop-fill me-1"></i>
+            <strong>No legal route found</strong> — the only path between these points is height-restricted for this vehicle.
+            Check posted bridge and tunnel clearance signs and consider an alternative start or end point.
+          </div>
+
+          <!-- Valhalla offline / geometry error notice -->
+          <div id="valhallaOfflineNote" class="alert alert-secondary small d-none py-2" role="alert">
+            <i class="bi bi-map me-1"></i>
+            <span id="valhallaOfflineNoteText">Route map unavailable — routing engine not responding.</span>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="d-grid gap-2">
+            <a id="btnGoogleMaps" href="#" target="_blank" class="btn btn-success btn-lg">
+              <i class="bi bi-map me-2"></i>Open in Google Maps
+            </a>
+            <a id="btnNHVRPlanner" href="https://routeplanner.nhvr.gov.au" target="_blank" class="btn btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right me-1"></i>NHVR Route Planner
+              <span class="small opacity-75 ms-1">— re-enter route manually</span>
+            </a>
+          </div>
+
+        </div><!-- /tab-route -->
+
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <!-- TAB 2 — Detail & Legislation                                      -->
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <div class="tab-pane fade" id="tab-detail" role="tabpanel" aria-labelledby="tab-detail-btn">
+
+          <!-- ── Full DG block (verbose — only shown when DG class entered) ── -->
+          <div id="dgBlock" class="d-none">
+
+            <!-- Placard load status banner -->
+            <div id="dgPlacarBanner" class="alert mb-3" role="alert">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i id="dgPlacarIcon" class="bi fs-5"></i>
+                <span id="dgPlacarTitle" class="fw-bold"></span>
+              </div>
+              <div id="dgPlacarDesc" class="small"></div>
+            </div>
+
+            <!-- DG summary row -->
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                  <i class="bi bi-radioactive me-1"></i>Dangerous Goods Summary
+                </h6>
+                <dl class="row mb-0 small" id="dgSummaryDl"></dl>
+              </div>
+            </div>
+
+            <!-- Threshold note -->
+            <div id="dgThresholdCard" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                  <i class="bi bi-info-circle me-1"></i>Placard Threshold Rule
+                </h6>
+                <p id="dgThresholdNote" class="mb-0 small"></p>
+              </div>
+            </div>
+
+            <!-- Tunnel restrictions (class-level legislative detail) -->
+            <div id="dgTunnelCard" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 id="dgTunnelTitle" class="card-subtitle mb-2">
+                  <i class="bi bi-sign-stop me-1"></i>Tunnel Restrictions
+                </h6>
+                <p id="dgTunnelNote" class="mb-0 small"></p>
+              </div>
+            </div>
+
+            <!-- Segregation requirements -->
+            <div id="dgSegCard" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-warning">
+                  <i class="bi bi-slash-circle me-1"></i>Segregation Requirements
+                </h6>
+                <p id="dgSegNote" class="mb-0 small"></p>
+              </div>
+            </div>
+
+            <!-- Warnings -->
+            <div id="dgWarningsCard" class="card shadow-sm mb-3 d-none">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-secondary">
+                  <i class="bi bi-exclamation-circle me-1"></i>Additional Notes
+                </h6>
+                <ul id="dgWarningsList" class="mb-0 ps-3 small"></ul>
+              </div>
+            </div>
+
+            <!-- ADG Code reference link -->
+            <div class="alert alert-info small mb-3" role="alert">
+              <i class="bi bi-info-circle-fill me-1"></i>
+              Thresholds are based on the ADG Code 7th Edition, Table 5.3.
+              Always verify with the
+              <a href="https://www.ntc.gov.au/codes-and-guidelines/australian-dangerous-goods-code" target="_blank" class="alert-link">NTC ADG Code</a>
+              and relevant state road authority before travel.
+            </div>
+
+          </div><!-- /dgBlock -->
+
+          <!-- NHVR network data (collapsible) -->
+          <div class="mt-3">
+            <button
+              class="btn btn-link btn-sm text-muted p-0"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#rawData"
+            >
+              <i class="bi bi-code-slash me-1"></i>Show NHVR network data
+            </button>
+            <div class="collapse mt-2" id="rawData">
+              <pre id="rawDataContent" class="bg-light p-3 rounded small" style="max-height:300px;overflow:auto;"></pre>
+            </div>
+          </div>
+
+        </div><!-- /tab-detail -->
+
+      </div><!-- /tab-content -->
 
     </div><!-- /results -->
 
@@ -649,5 +730,29 @@
     window.COMBINATION_GROUPS = {{ combination_groups | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+  <!-- ── Driving HUD overlay ─────────────────────────────────────────────── -->
+  <div id="hudPanel" class="hud-panel d-none" role="dialog" aria-label="Driving HUD">
+    <div class="hud-top">
+      <i id="hudIcon" class="bi bi-arrow-up-circle hud-turn-icon"></i>
+      <button id="btnCloseHud" class="hud-close-btn" aria-label="Close HUD">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div id="hudInstruction" class="hud-instruction">—</div>
+    <div id="hudDistance" class="hud-distance"></div>
+    <div id="hudNext" class="hud-next"></div>
+    <div class="hud-bottom">
+      <div class="hud-stat-box">
+        <div id="hudSpeed" class="hud-stat-value">—</div>
+        <div class="hud-stat-label">km/h</div>
+      </div>
+      <div class="hud-stat-box">
+        <div id="hudEta" class="hud-stat-value">—</div>
+        <div class="hud-stat-label">ETA</div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
