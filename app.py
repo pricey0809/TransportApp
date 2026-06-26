@@ -523,7 +523,7 @@ def valhalla_params():
         "costing":         ctx["costing_opts"]["costing"],
         "units":           "kilometres",
         "directions_type": "instructions",
-        "language":        "en-AU",
+        "language":        "en-US",
     }
     if ctx["costing_opts"].get("costing_options"):
         valhalla_request["costing_options"] = ctx["costing_opts"]["costing_options"]
