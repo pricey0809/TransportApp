@@ -11,12 +11,14 @@ services:
 
   valhalla:
     image: ghcr.io/valhalla/valhalla:latest
-    container_name: transportapp_valhalla
+    container_name: truckcodex_valhalla
     # Override entrypoint so we serve directly from pre-built tiles.
     # valhalla_service <config> <worker_threads>
     entrypoint: ["valhalla_service", "/custom_files/valhalla.json", "4"]
     ports:
-      - "8002:8002"
+      # Bind to 127.0.0.1 only — Valhalla is proxied by the app, not public-facing.
+      # Remove this binding entirely if you don't need direct host access.
+      - "127.0.0.1:8002:8002"
     volumes:
       # custom_files/ holds valhalla.json, the built tile tree, and admins.sqlite.
       # The PBF is downloaded here during setup but is gitignored (780 MB).
@@ -28,6 +30,25 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+
+  # ── Flask application ─────────────────────────────────────────────────────────
+
+  app:
+    build: .
+    container_name: truckcodex_app
+    restart: unless-stopped
+    ports:
+      # Bind to 127.0.0.1 — nginx on the host proxies here; not public-facing.
+      - "127.0.0.1:5000:5000"
+    env_file:
+      - .env
+    environment:
+      # Override .env so the container reaches Valhalla via Docker's internal
+      # network (service name DNS), not localhost (which is the container itself).
+      - VALHALLA_URL=http://valhalla:8002
+    depends_on:
+      valhalla:
+        condition: service_healthy
 
   # ── One-shot tile builder (only runs when explicitly invoked) ─────────────────
   # Usage: docker compose --profile build run --rm valhalla-build
