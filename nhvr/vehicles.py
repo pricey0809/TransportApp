@@ -25,16 +25,20 @@ Special cases
   OVERSIZE / OVERMASS
       Dimensions come from the oversize permit form at query time.
 
-Mass values
-───────────
-  Standard  — HVNL Schedule 2 General Mass Limits
-  CML       — Concessional Mass Limits (gazetted; currently defined for B-Double)
-  HML       — Higher Mass Limits (NHVR CML Notice)
+Mass values — NHVR "Common Heavy Freight Vehicle Configurations" (ref 201707-0577)
+───────────────────────────────────────────────────────────────────────────────────
+All GVM figures are the maximum for the most capable common axle configuration
+in each category (i.e. the routing engine applies the heaviest legal scenario).
+
+  Standard  — General Mass Limits (GML), HVNL Schedule 2
+  CML       — Concessional Mass Limits (gazetted NHVR CML Notice)
+  HML       — Higher Mass Limits (gazetted NHVR HML Notice; PBS axle-spacing
+               compliance required, approved roads only)
+
+  Road Train Type 1 = ≤ 36.5 m (canonical: 12-axle A-double, NHVR chart row 5c)
+  Road Train Type 2 = ≤ 53.5 m (canonical: 18-axle A-triple, NHVR chart row 6b)
 
 All widths are 2.5 m and heights 4.3 m (standard HVNL dimension limits).
-
-The "Higher Mass Limits (HML)" group from the previous vehicle list is dissolved —
-HML is now the "hml" mass scheme option within the relevant combination types.
 """
 
 # ── Combination groups ─────────────────────────────────────────────────────────
@@ -54,6 +58,8 @@ HML is now the "hml" mass scheme option within the relevant combination types.
 COMBINATION_GROUPS: list[dict] = [
 
     # ── B-Double ──────────────────────────────────────────────────────────────
+    # NHVR chart section 4 — "Common B-Double Combinations – Class 2"
+    # GVM figures: 9-axle B-double ≤ 26 m (row 4d) — the heaviest common config.
     {
         "group": "B-Double",
         "combinations": [
@@ -61,7 +67,6 @@ COMBINATION_GROUPS: list[dict] = [
                 "code":             "BDOUBLE",
                 "label":            "B-Double",
                 "lengths": [
-                    {"length_m": 23.0, "label": "23 m"},
                     {"length_m": 25.0, "label": "25 m"},
                     {"length_m": 26.0, "label": "26 m"},
                 ],
@@ -71,17 +76,17 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        42.5,
+                        "gvm_t":        62.5,
                         "axle_load_t":   9.0,
                     },
                     "cml": {
                         "label":        "Concessional Mass Limits (CML)",
-                        "gvm_t":        45.5,
+                        "gvm_t":        64.5,
                         "axle_load_t":   9.0,
                     },
                     "hml": {
                         "label":        "Higher Mass Limits (HML)",
-                        "gvm_t":        68.5,
+                        "gvm_t":        68.0,
                         "axle_load_t":  10.0,
                     },
                 },
@@ -90,34 +95,14 @@ COMBINATION_GROUPS: list[dict] = [
     },
 
     # ── Road Train ────────────────────────────────────────────────────────────
+    # Type 1 = ≤ 36.5 m  (NHVR chart section 5, row 5c: 12-axle A-double)
+    # Type 2 = ≤ 53.5 m  (NHVR chart section 6, row 6b: 18-axle A-triple)
     {
         "group": "Road Train",
         "combinations": [
             {
                 "code":             "ROADTRAIN_T1",
                 "label":            "Road Train Type 1",
-                "lengths": [
-                    {"length_m": 26.5, "label": "26.5 m"},
-                ],
-                "default_length_m": 26.5,
-                "width_m":  2.5,
-                "height_m": 4.3,
-                "mass_schemes": {
-                    "standard": {
-                        "label":        "Standard Mass",
-                        "gvm_t":        53.5,
-                        "axle_load_t":   9.0,
-                    },
-                    "hml": {
-                        "label":        "Higher Mass Limits (HML)",
-                        "gvm_t":        83.5,
-                        "axle_load_t":  10.0,
-                    },
-                },
-            },
-            {
-                "code":             "ROADTRAIN_T2_36",
-                "label":            "Road Train Type 2 (36.5 m)",
                 "lengths": [
                     {"length_m": 36.5, "label": "36.5 m"},
                 ],
@@ -127,20 +112,25 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        62.5,
+                        "gvm_t":        82.5,
+                        "axle_load_t":   9.0,
+                    },
+                    "cml": {
+                        "label":        "Concessional Mass Limits (CML)",
+                        "gvm_t":        84.5,
                         "axle_load_t":   9.0,
                     },
                     "hml": {
                         "label":        "Higher Mass Limits (HML)",
-                        "gvm_t":       105.5,
+                        "gvm_t":        90.5,
                         "axle_load_t":  10.0,
                     },
                 },
             },
             {
-                "code":             "ROADTRAIN_T2_53",
-                "label":            "Road Train Type 2 (53.5 m)",
-                # Triple road train on gazetted NT/WA/QLD routes — Standard only.
+                "code":             "ROADTRAIN_T2",
+                "label":            "Road Train Type 2",
+                # Triple road train on gazetted routes (NT/WA/QLD remote only).
                 "lengths": [
                     {"length_m": 53.5, "label": "53.5 m — gazetted remote routes only"},
                 ],
@@ -150,8 +140,18 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":       125.5,
+                        "gvm_t":       122.5,
                         "axle_load_t":   9.0,
+                    },
+                    "cml": {
+                        "label":        "Concessional Mass Limits (CML)",
+                        "gvm_t":       124.5,
+                        "axle_load_t":   9.0,
+                    },
+                    "hml": {
+                        "label":        "Higher Mass Limits (HML)",
+                        "gvm_t":       135.5,
+                        "axle_load_t":  10.0,
                     },
                 },
             },
@@ -159,6 +159,9 @@ COMBINATION_GROUPS: list[dict] = [
     },
 
     # ── A-Train / B-Train Combinations ────────────────────────────────────────
+    # A-Double = canonical Type 1 road train (NHVR fact sheet fig. 15).
+    # GVM figures: 12-axle A-double ≤ 36.5 m (NHVR chart row 5c) — same as T1.
+    # B-Triple GVM: 12-axle B-triple ≤ 36.5 m (NHVR chart row 5e).
     {
         "group": "A-Train / B-Train Combinations",
         "combinations": [
@@ -174,12 +177,17 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        53.5,
+                        "gvm_t":        82.5,
+                        "axle_load_t":   9.0,
+                    },
+                    "cml": {
+                        "label":        "Concessional Mass Limits (CML)",
+                        "gvm_t":        84.5,
                         "axle_load_t":   9.0,
                     },
                     "hml": {
                         "label":        "Higher Mass Limits (HML)",
-                        "gvm_t":        68.5,
+                        "gvm_t":        90.5,
                         "axle_load_t":  10.0,
                     },
                 },
@@ -196,12 +204,17 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        62.5,
+                        "gvm_t":        82.5,
+                        "axle_load_t":   9.0,
+                    },
+                    "cml": {
+                        "label":        "Concessional Mass Limits (CML)",
+                        "gvm_t":        84.5,
                         "axle_load_t":   9.0,
                     },
                     "hml": {
                         "label":        "Higher Mass Limits (HML)",
-                        "gvm_t":        68.5,
+                        "gvm_t":        90.5,
                         "axle_load_t":  10.0,
                     },
                 },
@@ -210,6 +223,11 @@ COMBINATION_GROUPS: list[dict] = [
     },
 
     # ── Truck and Dog ─────────────────────────────────────────────────────────
+    # GML 42.5 t is the HVNL Schedule 2 ceiling for all dog-trailer configs.
+    # CML 43.5 t applies to dog trailer (not pig trailer) configurations.
+    # HML does not apply to truck and dog (NHVR chart shows "—" in HML column).
+    # NOTE: 22.5 m and 25 m lengths are State-access variants that exceed the
+    # 19.0 m general access limit — they operate under specific State notices.
     {
         "group": "Truck and Dog",
         "combinations": [
@@ -229,19 +247,26 @@ COMBINATION_GROUPS: list[dict] = [
                         "gvm_t":        42.5,
                         "axle_load_t":   9.0,
                     },
+                    "cml": {
+                        "label":        "Concessional Mass Limits (CML)",
+                        "gvm_t":        43.5,
+                        "axle_load_t":   9.0,
+                    },
                 },
             },
         ],
     },
 
     # ── Controlled Access Buses ───────────────────────────────────────────────
+    # Class 2 CAB: rigid bus 12.5 m < L ≤ 14.5 m — GML 22.0 t (3-axle max,
+    #   National Class 2 Bus Authorisation Notice 2024, NHVR bus chart items 15–16).
+    # Articulated bus: L ≤ 18.0 m — GML 26.0 t (MDL / NHVR bus chart).
     {
         "group": "Controlled Access Buses",
         "combinations": [
             {
                 "code":             "CAB_CLASS2",
                 "label":            "Controlled Access Bus Class 2",
-                # Rigid bus exceeding standard access conditions; typically ≤14.5 m
                 "lengths": [
                     {"length_m": 14.5, "label": "14.5 m"},
                 ],
@@ -251,25 +276,25 @@ COMBINATION_GROUPS: list[dict] = [
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        20.0,
+                        "gvm_t":        22.0,
                         "axle_load_t":   9.0,
                     },
                 },
             },
             {
                 "code":             "CAB_CLASS3",
-                "label":            "Controlled Access Bus Class 3",
-                # Articulated bus; typical length 19 m
+                "label":            "Articulated Bus",
+                # Articulated bus (Class 2) — MDL max length 18.0 m, GML 26.0 t.
                 "lengths": [
-                    {"length_m": 19.0, "label": "19 m"},
+                    {"length_m": 18.0, "label": "18 m"},
                 ],
-                "default_length_m": 19.0,
+                "default_length_m": 18.0,
                 "width_m":  2.5,
                 "height_m": 4.3,
                 "mass_schemes": {
                     "standard": {
                         "label":        "Standard Mass",
-                        "gvm_t":        28.0,
+                        "gvm_t":        26.0,
                         "axle_load_t":   9.0,
                     },
                 },
@@ -351,14 +376,11 @@ def get_combination(code: str) -> dict | None:
 # Maps (combination_code, length_m, mass_scheme) → NHVR network API code.
 #
 # SPV / Oversize entries use (None, None) as they have no length or scheme.
-# CML B-doubles reuse the length-specific standard code because the NHVR
-# network type identifier does not carry a separate CML designation.
+# CML road trains reuse the standard network code — the NHVR network type
+# identifier does not carry a separate CML designation.
 
 _NHVR_CODE_MAP: dict[str, dict[tuple, str]] = {
     "BDOUBLE": {
-        (23.0, "standard"): "BDOUBLE_23M",
-        (23.0, "cml"):      "BDOUBLE_23M",
-        (23.0, "hml"):      "HML_BDOUBLE",
         (25.0, "standard"): "BDOUBLE_25M",
         (25.0, "cml"):      "BDOUBLE_25M",
         (25.0, "hml"):      "HML_BDOUBLE",
@@ -367,34 +389,37 @@ _NHVR_CODE_MAP: dict[str, dict[tuple, str]] = {
         (26.0, "hml"):      "HML_BDOUBLE",
     },
     "ROADTRAIN_T1": {
-        (26.5, "standard"): "ROADTRAIN_T1_265M",
-        (26.5, "hml"):      "HML_ROADTRAIN_T1",
+        (36.5, "standard"): "ROADTRAIN_T1",
+        (36.5, "cml"):      "ROADTRAIN_T1",
+        (36.5, "hml"):      "HML_ROADTRAIN_T1",
     },
-    "ROADTRAIN_T2_36": {
-        (36.5, "standard"): "ROADTRAIN_T2_365M",
-        (36.5, "hml"):      "HML_ROADTRAIN_T2",
-    },
-    "ROADTRAIN_T2_53": {
+    "ROADTRAIN_T2": {
         (53.5, "standard"): "ROADTRAIN_T2_535M",
+        (53.5, "cml"):      "ROADTRAIN_T2_535M",
+        (53.5, "hml"):      "HML_ROADTRAIN_T2",
     },
     "ADOUBLE": {
         # No separate HML NHVR code for A-Double — same code regardless of scheme.
         (36.5, "standard"): "ADOUBLE_365M",
+        (36.5, "cml"):      "ADOUBLE_365M",
         (36.5, "hml"):      "ADOUBLE_365M",
     },
     "BTRIPLE": {
         (36.5, "standard"): "BTRIPLE",
+        (36.5, "cml"):      "BTRIPLE",
         (36.5, "hml"):      "BTRIPLE",
     },
     "TRUCK_DOG": {
         (22.5, "standard"): "TRUCK_DOG_225M",
+        (22.5, "cml"):      "TRUCK_DOG_225M",
         (25.0, "standard"): "TRUCK_DOG_25M",
+        (25.0, "cml"):      "TRUCK_DOG_25M",
     },
     "CAB_CLASS2": {
         (14.5, "standard"): "CAB_CLASS2",
     },
     "CAB_CLASS3": {
-        (19.0, "standard"): "CAB_CLASS3",
+        (18.0, "standard"): "CAB_CLASS3",
     },
     "SPV_LCV":          {(None, None): "SPV_LOAD_CARRYING"},
     "SPV_SPECIAL":      {(None, None): "SPV_SPECIAL"},
@@ -424,11 +449,9 @@ def get_nhvr_code(
 # Both are preserved so route.py needs no changes.
 
 VEHICLE_CODES: dict[str, str] = {
-    "BDOUBLE_23M":       "B-Double 23m",
     "BDOUBLE_25M":       "B-Double 25m",
     "BDOUBLE_26M":       "B-Double 26m",
-    "ROADTRAIN_T1_265M": "Road Train Type 1 (26.5m)",
-    "ROADTRAIN_T2_365M": "Road Train Type 2 (36.5m)",
+    "ROADTRAIN_T1":      "Road Train Type 1 (36.5m)",
     "ROADTRAIN_T2_535M": "Road Train Type 2 (53.5m)",
     "HML_BDOUBLE":       "HML B-Double",
     "HML_ROADTRAIN_T1":  "HML Road Train Type 1",
@@ -438,7 +461,7 @@ VEHICLE_CODES: dict[str, str] = {
     "TRUCK_DOG_225M":    "Truck and Dog 22.5m",
     "TRUCK_DOG_25M":     "Truck and Dog 25m",
     "CAB_CLASS2":        "Controlled Access Bus Class 2",
-    "CAB_CLASS3":        "Controlled Access Bus Class 3",
+    "CAB_CLASS3":        "Articulated Bus",
     "SPV_LOAD_CARRYING": "Load Carrying Vehicle (LCV)",
     "SPV_SPECIAL":       "Special Purpose Vehicle (SPV)",
     "SPV_AGRICULTURAL":  "Agricultural Heavy Vehicle",
