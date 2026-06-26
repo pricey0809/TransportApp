@@ -82,11 +82,12 @@ combinationSelect.addEventListener('change', () => {
   // ── Length picker ──────────────────────────────────────────────────────────
   const lengths = combo.lengths || [];
   if (lengths.length > 1) {
+    const defaultLen = combo.default_length_m ?? lengths[0].length_m;
     lengthOptions.innerHTML = lengths.map((l, i) =>
       `<div class="form-check form-check-inline me-2">
         <input class="form-check-input" type="radio" name="lengthRadio"
                id="len_${i}" value="${l.length_m}"
-               ${i === 0 ? 'checked' : ''} />
+               ${l.length_m === defaultLen ? 'checked' : ''} />
         <label class="form-check-label" for="len_${i}">${escHtml(l.label)}</label>
       </div>`
     ).join('');

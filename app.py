@@ -615,12 +615,25 @@ def proxy_valhalla():
         if not resp.ok:
             # Valhalla returned an error — extract text and return clean JSON
             # (never forward raw HTML pages to the browser)
+            error_code = None
             try:
                 err_body = resp.json()
-                err_msg = err_body.get("error", {}).get("description") or str(err_body)
+                err_val = err_body.get("error")
+                if isinstance(err_val, str):
+                    err_msg = err_val
+                elif isinstance(err_val, dict):
+                    err_msg = err_val.get("description") or err_val.get("message") or str(err_val)
+                else:
+                    err_msg = str(err_body)
+                error_code = err_body.get("error_code")
+                logger.error("Valhalla %s error (code %s): %s", resp.status_code, error_code, err_msg)
             except Exception:
                 err_msg = resp.text[:300] or f"HTTP {resp.status_code}"
-            return jsonify({"error": f"Valhalla returned HTTP {resp.status_code}: {err_msg}"}), resp.status_code
+                logger.error("Valhalla %s non-JSON response: %s", resp.status_code, err_msg)
+            resp_data = {"error": f"Valhalla returned HTTP {resp.status_code}: {err_msg}"}
+            if error_code is not None:
+                resp_data["error_code"] = error_code
+            return jsonify(resp_data), resp.status_code
         return resp.content, resp.status_code, {"Content-Type": "application/json"}
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Routing engine not available"}), 503
