@@ -208,6 +208,29 @@ def check_route():
     if combo.get("requires_oversize_form"):
         return jsonify({"error": "Use /api/oversize for oversize / overmass queries."}), 400
 
+    # ── General access — no NHVR network permit required ─────────────────────
+    if nhvr_code == "GENERAL_ACCESS":
+        parts = [combo["label"]]
+        if length_m is not None:
+            parts.append(f"{length_m:g} m")
+        if mass_scheme and mass_scheme in combo.get("mass_schemes", {}):
+            scheme_data = combo["mass_schemes"][mass_scheme]
+            effective_gvm = manual_gvm_t if is_pbs else scheme_data["gvm_t"]
+            parts.append(scheme_data["label"])
+            parts.append(f"{effective_gvm:g} t GVM" + (" — PBS" if is_pbs else ""))
+        return jsonify({
+            "status":        "approved",
+            "status_detail": (
+                f"{' — '.join(parts)} operates under general access conditions. "
+                "No NHVR network permit is required for this configuration."
+            ),
+            "vehicle_label": " — ".join(parts),
+            "networks":      [],
+            "conditions":    [],
+            "restrictions":  [],
+            "raw":           [],
+        })
+
     # ── NHVR network lookup ───────────────────────────────────────────────────
     try:
         nhvr_client = NHVRClient()

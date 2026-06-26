@@ -383,18 +383,20 @@ def get_combination(code: str) -> dict | None:
 
 _NHVR_CODE_MAP: dict[str, dict[tuple, str]] = {
     "BDOUBLE": {
-        (19.0, "standard"): "BDOUBLE_19M",
-        (19.0, "cml"):      "BDOUBLE_19M",
-        (19.0, "hml"):      "BDOUBLE_19M",
+        # 19 m fits within general access limits — no NHVR network permit needed.
+        (19.0, "standard"): "GENERAL_ACCESS",
+        (19.0, "cml"):      "GENERAL_ACCESS",
+        (19.0, "hml"):      "GENERAL_ACCESS",
         (25.0, "standard"): "BDOUBLE_25M",
         (25.0, "cml"):      "BDOUBLE_25M",
         (25.0, "hml"):      "HML_BDOUBLE",
         (26.0, "standard"): "BDOUBLE_26M",
         (26.0, "cml"):      "BDOUBLE_26M",
         (26.0, "hml"):      "HML_BDOUBLE",
-        (27.5, "standard"): "BDOUBLE_275M",
-        (27.5, "cml"):      "BDOUBLE_275M",
-        (27.5, "hml"):      "BDOUBLE_275M",
+        # 27.5 m is WA-specific; use HML_BDOUBLE as the closest NHVR network code.
+        (27.5, "standard"): "HML_BDOUBLE",
+        (27.5, "cml"):      "HML_BDOUBLE",
+        (27.5, "hml"):      "HML_BDOUBLE",
     },
     "ROADTRAIN_T1": {
         (36.5, "standard"): "ROADTRAIN_T1",
@@ -457,10 +459,9 @@ def get_nhvr_code(
 # Both are preserved so route.py needs no changes.
 
 VEHICLE_CODES: dict[str, str] = {
-    "BDOUBLE_19M":       "B-Double 19m",
+    "GENERAL_ACCESS":    "General Access",
     "BDOUBLE_25M":       "B-Double 25m",
     "BDOUBLE_26M":       "B-Double 26m",
-    "BDOUBLE_275M":      "B-Double 27.5m (WA)",
     "ROADTRAIN_T1":      "Road Train Type 1 (36.5m)",
     "ROADTRAIN_T2_535M": "Road Train Type 2 (53.5m)",
     "HML_BDOUBLE":       "HML B-Double",
